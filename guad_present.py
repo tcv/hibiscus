@@ -11,8 +11,8 @@ import skrf as rf
 import ephem as eph
 
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/'
-data_dir = '/home/tcv/lustre/processed_data_take2/'
-result_dir = '/home/tcv/lustre/data_plots_take2/'
+data_dir = '/home/tcv/lustre/processed_data_take3/'
+result_dir = '/home/tcv/lustre/data_plots_take3/'
 gsm_raw_data = loadtxt('/home/tcv/guad_extras/gsm_guadalupe.dat')
 
 data = os.listdir(data_dir)

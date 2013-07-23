@@ -20,22 +20,22 @@ import matplotlib.pyplot as plt
 cal_dir = '/home/tcv/lustre/cal_data/'
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/June15/'
 data_dir = '/home/tcv/lustre/data_arrays/'
-out_dir = '/home/tcv/lustre/processed_data_take2/'
+out_dir = '/home/tcv/lustre/processed_data_take3/'
 #out_dir = '/home/tcv/lustre/processed_data/'
 #ant_s11_file = 'Isla_Guadalupe_data_jun_2013/ANT_3_average.s1p'
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
 #amp_s_file = 'Isla_Guadalupe_data_jun_2013/WEA101_AMP_2013-04-04.s2p'
 amp_s_file = '/home/tcv/guad_extras/WEA101_AMP_2013-04-04.s2p'
 
-diff_time = loadtxt(cal_dir+'Cal_time_take2.txt')
-Temp_gain = loadtxt(cal_dir+'TempGain_fit_take2.txt')
-GainR = loadtxt(cal_dir+'Real_Gain_avg_take2.txt')
-GainX = loadtxt(cal_dir+'Imag_Gain_avg_take2.txt')
-InR = loadtxt(cal_dir+'Real_In_avg_take2.txt')
-InX = loadtxt(cal_dir+'Imag_In_avg_take2.txt')
-VnR = loadtxt(cal_dir+'Real_Vn_avg_take2.txt')
-VnX = loadtxt(cal_dir+'Imag_Vn_avg_take2.txt')
-new_freq = loadtxt(cal_dir+'Cal_freq_take2.txt')
+diff_time = loadtxt(cal_dir+'Cal_time_take3.txt')
+Temp_gain = loadtxt(cal_dir+'TempGain_fit_take3.txt')
+GainR = loadtxt(cal_dir+'Real_Gain_avg_take3.txt')
+GainX = loadtxt(cal_dir+'Imag_Gain_avg_take3.txt')
+InR = loadtxt(cal_dir+'Real_In_avg_take3.txt')
+InX = loadtxt(cal_dir+'Imag_In_avg_take3.txt')
+VnR = loadtxt(cal_dir+'Real_Vn_avg_take3.txt')
+VnX = loadtxt(cal_dir+'Imag_Vn_avg_take3.txt')
+new_freq = loadtxt(cal_dir+'Cal_freq_take3.txt')
 
 #single_TG = Temp_gain[:,1000]
 #mean_TG = ma.median(single_TG)
@@ -275,10 +275,10 @@ for s in range(0,len(selected_ind)):
 
         new_mask_full = zeros((len(ant_mask_full),len(ant_mask_full[0])))
         for i in range(0,len(ant_mask_full)):
-            nandata = where(isnan(ant_eff_noise_corr[i]))
+            nandata = where(isnan(ant_eff_noise_corr[i]))[0]
             nandata = array(nandata)
-            for k in range(0,len(nandata[0])):
-                index = nandata[0,i]
+            for k in range(0,len(nandata)):
+                index = nandata[k]
                 new_mask_full[i,index]=1.0
                 ant_eff_noise_corr[i,index] = 0.0
             new_mask_single = fc.flagging(ant_eff_noise_corr[i],new_freq,3.,30)

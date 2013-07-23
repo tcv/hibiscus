@@ -438,8 +438,8 @@ def noise_calc(load,short,term,noise,Zamp,freq):
     VJF = sqrt(4*1.381e-23*300*Z50*(freq[1]-freq[0])*1e6)*ones(len(freq))
 #    VJO = sqrt(4*1.381e-23*300*absolute(Z100)*(freq[1]-freq[0])*1e6)*ones(len(freq))
     VJO = sqrt(2.)*VJF
-    Gain = (Z100*(V50-Vsh)*(Zamp+Z50)-Z50*(V100-Vsh)*(Zamp+Z100))/(Zamp*VJF*(Z100-sqrt(2.)*Z50))
-    In = (V50-Vsh)*(Zamp+Z50)/(Gain*Zamp*Z50)-VJF/Z50 
+    Gain = (Z100*(V50-Zamp*Vsh/(Zamp+Z50))*(Zamp+Z50)-Z50*(V100-Zamp*Vsh/(Zamp+Z100))*(Zamp+Z100))/(Zamp*VJF*(Z100-sqrt(2.)*Z50))
+    In = (V50-Zamp*Vsh/(Zamp+Z50))*(Zamp+Z50)/(Gain*Zamp*Z50)-VJF/Z50 
 ##    In = VJF*((Zamp+Z50)*sqrt(2.)*(V50-Vsh)/((Zamp+Z100)*(V100-Vsh))-1)/(Z50-Z100*(Zamp+Z50)*(V50-Vsh)/((Zamp+Z100)*(V100-Vsh)))
 ##    Gain = (V50-Vsh)*(Zamp+Z50)/(Zamp*(VJF+In*Z50))
 #    Gain = ((Zamp+Z50)*Z100*V50+Zamp*(Z50-Z100)*Vsh-(Zamp+Z100)*V100*Z50)/(Zamp*(VJF*Z100-VJO*Z50))
@@ -451,9 +451,9 @@ def noise_calc(load,short,term,noise,Zamp,freq):
     Vm50 = Zamp*(VJF+Vn)/(Zamp+Z50)+In*Zamp*Z50/(Zamp+Z50)
     Vns = sqrt(((Zamp+Z50)*Vnoise/Zamp/Gain)**2-Vm50**2)
 #    Pns = absolute(Vns**2/Zamp)
-    Pnoise = abs(Vnoise/Gain)**2
-    P50 = abs(Vm50/Gain)**2
-    Psh = abs(Vn)**2
+    Pnoise = abs(Vnoise)**2
+    P50 = abs(Vm50*Gain)**2
+    Psh = abs(Vn*Gain)**2
 #    P50 = absolute(V50**2/(Zamp*Gain**2))
 #    Vm50 = Zamp*(VJF+Vn)/(Zamp+Z50)+In*Zamp*Z50/(Zamp+Z50)
 #    Ve50 = V50/Gain
@@ -461,7 +461,7 @@ def noise_calc(load,short,term,noise,Zamp,freq):
 #    Tns = 300*(abs(Vnoise/Gain)**2-abs(Vm50)**2)/abs(Vm50)**2   
 #    Tns = 300*(abs(Vnoise)**2)*(Zamp+Z50)/Zamp/Gain/abs(Vm50)**2
     Pns = abs(Vns*Gain)**2/(2*Z50)
-    Tns = 300.*Pns/(P50-Psh)
+    Tns = 300.*Pnoise/(P50-Psh)
     gtemp = Tns/Pns
 
     return Vn,In,Gain,gtemp
