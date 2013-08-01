@@ -20,22 +20,22 @@ import matplotlib.pyplot as plt
 cal_dir = '/home/tcv/lustre/cal_data/'
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/June15/'
 data_dir = '/home/tcv/lustre/data_arrays/'
-out_dir = '/home/tcv/lustre/processed_data_take3/'
+out_dir = '/home/tcv/lustre/processed_data_take4/'
 #out_dir = '/home/tcv/lustre/processed_data/'
 #ant_s11_file = 'Isla_Guadalupe_data_jun_2013/ANT_3_average.s1p'
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
 #amp_s_file = 'Isla_Guadalupe_data_jun_2013/WEA101_AMP_2013-04-04.s2p'
 amp_s_file = '/home/tcv/guad_extras/WEA101_AMP_2013-04-04.s2p'
 
-diff_time = loadtxt(cal_dir+'Cal_time_take3.txt')
-Temp_gain = loadtxt(cal_dir+'TempGain_fit_take3.txt')
-GainR = loadtxt(cal_dir+'Real_Gain_avg_take3.txt')
-GainX = loadtxt(cal_dir+'Imag_Gain_avg_take3.txt')
-InR = loadtxt(cal_dir+'Real_In_avg_take3.txt')
-InX = loadtxt(cal_dir+'Imag_In_avg_take3.txt')
-VnR = loadtxt(cal_dir+'Real_Vn_avg_take3.txt')
-VnX = loadtxt(cal_dir+'Imag_Vn_avg_take3.txt')
-new_freq = loadtxt(cal_dir+'Cal_freq_take3.txt')
+diff_time = loadtxt(cal_dir+'Cal_time_take4.txt')
+Temp_gain = loadtxt(cal_dir+'TempGain_fit_take4.txt')
+GainR = loadtxt(cal_dir+'Real_Gain_fit_take4.txt')
+GainX = loadtxt(cal_dir+'Imag_Gain_fit_take4.txt')
+InR = loadtxt(cal_dir+'Real_In_fit_take4.txt')
+InX = loadtxt(cal_dir+'Imag_In_fit_take4.txt')
+VnR = loadtxt(cal_dir+'Real_Vn_fit_take4.txt')
+VnX = loadtxt(cal_dir+'Imag_Vn_fit_take4.txt')
+new_freq = loadtxt(cal_dir+'Cal_freq_take4.txt')
 
 #single_TG = Temp_gain[:,1000]
 #mean_TG = ma.median(single_TG)

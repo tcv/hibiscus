@@ -143,18 +143,20 @@ for i in range(0,1):
 	Gain_lim = []
 	TempG_lim = []
 	diff_time_lim = []
-
-	Gain_array = array(Gain)
+        
+        Temp_gain = array(Temp_gain)
+	print 'Temp Gain Mean is:', ma.median(Temp_gain[:,4000])/1e9
+        Gain_array = array(Gain)
 	single_Gain = real(Gain_array[:,4000])
 	median_Gain = ma.median(real(single_Gain))
 	std_Gain = ma.std(real(single_Gain))
-	print 'Plotting Gain Evolution over Time...'
+	print 'Plotting Gain Evolution over Time (median is %0.1f)...' %median_Gain
 	pylab.scatter(diff_time,single_Gain,c='b',edgecolor='b')
 	pylab.scatter(diff_time,ones(len(single_Gain))*(median_Gain-3*std_Gain),c='g',edgecolor='g')
 	pylab.scatter(diff_time,ones(len(single_Gain))*(median_Gain+3*std_Gain),c='r',edgecolor='r')
 #	Gain_fit = itp.UnivariateSpline(diff_time,real(single_Gain))
 #	pylab.plot(diff_time,Gain_fit(diff_time))
-	pylab.savefig('/home/tcv/'+caldir+day_dir+'_Gain_evolution_take3',dpi=300)
+	pylab.savefig('/home/tcv/'+caldir+day_dir+'_Gain_evolution_take4',dpi=300)
 	pylab.clf()
 
 	time_sort = argsort(diff_time)
@@ -280,12 +282,12 @@ for i in range(0,1):
 
 	print 'Final Number of Averaged Datasets is:',len(diff_time_avg)
 
-	savetxt('/home/tcv/'+caldir+day_dir+'Real_In_avg_take3.txt',real(In_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Imag_In_avg_take3.txt',imag(In_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Real_Vn_avg_take3.txt',real(Vn_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Imag_Vn_avg_take3.txt',imag(Vn_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Real_Gain_avg_take3.txt',real(Gain_avg),delimiter =' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Imag_Gain_avg_take3.txt',imag(Gain_avg),delimiter =' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'TempGain_avg_take3.txt',TempG_avg,delimiter=' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Real_In_avg_take4.txt',real(In_avg),delimiter = ' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Imag_In_avg_take4.txt',imag(In_avg),delimiter = ' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Real_Vn_avg_take4.txt',real(Vn_avg),delimiter = ' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Imag_Vn_avg_take4.txt',imag(Vn_avg),delimiter = ' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Real_Gain_avg_take4.txt',real(Gain_avg),delimiter =' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Imag_Gain_avg_take4.txt',imag(Gain_avg),delimiter =' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'TempGain_avg_take4.txt',TempG_avg,delimiter=' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'Cal_time.txt',diff_time_avg,delimiter=' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'Cal_freq.txt',new_freq,delimiter=' ')

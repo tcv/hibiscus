@@ -451,17 +451,19 @@ def noise_calc(load,short,term,noise,Zamp,freq):
     Vm50 = Zamp*(VJF+Vn)/(Zamp+Z50)+In*Zamp*Z50/(Zamp+Z50)
     Vns = sqrt(((Zamp+Z50)*Vnoise/Zamp/Gain)**2-Vm50**2)
 #    Pns = absolute(Vns**2/Zamp)
-    Pnoise = abs(Vnoise)**2
-    P50 = abs(Vm50*Gain)**2
-    Psh = abs(Vn*Gain)**2
+    Pnoise = abs(Vnoise)**2/(2*Z50)
+    P50 = abs(Vm50*Gain)**2/(2*Z50)
+    Psh = abs(Vn*Gain)**2/(2*Z50)
 #    P50 = absolute(V50**2/(Zamp*Gain**2))
 #    Vm50 = Zamp*(VJF+Vn)/(Zamp+Z50)+In*Zamp*Z50/(Zamp+Z50)
 #    Ve50 = V50/Gain
 #    Vns = sqrt((Vnoise/Gain)**2-(Vm50)**2)
 #    Tns = 300*(abs(Vnoise/Gain)**2-abs(Vm50)**2)/abs(Vm50)**2   
 #    Tns = 300*(abs(Vnoise)**2)*(Zamp+Z50)/Zamp/Gain/abs(Vm50)**2
+#    Pnoise = abs((Zamp+Z50)*Vnoise/Zamp)**2
+#    Pns = (Pnoise-P50)
     Pns = abs(Vns*Gain)**2/(2*Z50)
-    Tns = 300.*Pnoise/(P50-Psh)
+    Tns = 300.*(Pns)/(P50)
     gtemp = Tns/Pns
 
     return Vn,In,Gain,gtemp
