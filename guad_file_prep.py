@@ -18,6 +18,7 @@ daydir = '/lustre/data_arrays/'
 rebin_ant = []
 ant_time = []
 ant_mask = []
+ant_volt = []
 binscale = 1
 timescale = 1
 ant_limit = []
@@ -62,15 +63,18 @@ if int(date_ind)<15:
                         rebin_ant.append(new_data)
                         ant_time.append(time)
                         ant_mask.append(new_mask)
+                        ant_volt.append(volt)
 	time_sort = argsort(ant_time)
 #	print time_sort
 	rebin_ant_sort = []
 	ant_time_sort = [] 
 	ant_mask_sort = []
+        ant_volt_sort = []
 	for t in range(0,len(rebin_ant)):
 	    rebin_ant_sort.append(rebin_ant[time_sort[t]])
 	    ant_time_sort.append(ant_time[time_sort[t]])
 	    ant_mask_sort.append(ant_mask[time_sort[t]])
+            ant_volt_sort.append(ant_volt[time_sort[t]])
 	
 	i=-1
 	print 'Number of datasets in Day:',len(rebin_ant)
@@ -80,16 +84,19 @@ if int(date_ind)<15:
             savetxt('/home/tcv/'+daydir+date+'-'+set+'_time.txt',ant_time_sort[i*500:(i+1)*500],delimiter=' ')
             savetxt('/home/tcv/'+daydir+date+'-'+set+'_mask.txt',ant_mask_sort[i*500:(i+1)*500],delimiter=' ')
             savetxt('/home/tcv/'+daydir+date+'-'+set+'_freq.txt',new_freq,delimiter=' ')
+            savetxt('/home/tcv/'+daydir+date+'-'+set+'_volt.txt',ant_volt_sort[i*500:(i+1)*500],delimiter=' ')
 	set = str(i+1)
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_antenna.txt',rebin_ant_sort[(i+1)*500:-1],delimiter = ' ')
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_time.txt',ant_time_sort[(i+1)*500:-1],delimiter=' ')
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_mask.txt',ant_mask_sort[(i+1)*500:-1],delimiter=' ')
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_freq.txt',new_freq,delimiter=' ') 
+        savetxt('/home/tcv/'+daydir+date+'-'+set+'_volt.txt',ant_volt_sort[(i+1)*500:-1],delimiter=' ')
 
 	print 'Number of Files in Day:',int(set)+1
         rebin_ant = []
         ant_time = []
         ant_mask = []
+        ant_volt = []
 #                        if len(time_limit)<1:
 #                            time_test = time
 #                        else:

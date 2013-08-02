@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 cal_dir = '/home/tcv/lustre/cal_data/'
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/June15/'
 data_dir = '/home/tcv/lustre/data_arrays/'
-out_dir = '/home/tcv/lustre/processed_data_take4/'
+out_dir = '/home/tcv/lustre/processed_data_noeff/'
 #out_dir = '/home/tcv/lustre/processed_data/'
 #ant_s11_file = 'Isla_Guadalupe_data_jun_2013/ANT_3_average.s1p'
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
@@ -183,7 +183,8 @@ for s in range(0,len(selected_ind)):
             lin_data = 10.0**(rebin_ant[k]/10.0)
             corr_data = fc.effcal(Eff_sm,new_freq,lin_data)
             data_eff_cal.append(corr_data)
-        data_eff_cal_db = 10.0*log10(data_eff_cal)
+#        data_eff_cal_db = 10.0*log10(data_eff_cal)
+        data_eff_cal_db = rebin_ant
 
         ant_eff_noise_corr = []
         for i in range(0,len(data_eff_cal_db)):
