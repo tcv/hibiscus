@@ -62,7 +62,6 @@ for i in range(0,1):
 	noise_time = []
 	binscale = 1
 	day_dir = full_date 
-#        if len(direct.split('_'))>2:
         dirlist = os.listdir(directory)
         for fname in dirlist:
             filename=directory+fname
@@ -127,10 +126,10 @@ for i in range(0,1):
 
 	print 'Number of Calibration Datasets is:',shape(diff_time)
 
-	if len(Gain)<10.:
+	if len(Gain)<2.:
 	   calscale=len(Gain)
 	else:
-	   calscale=10
+	   calscale=2
 #	calscale = int(len(Gain)/10.)
 	calset = 0
 	In_avg = []
@@ -145,7 +144,7 @@ for i in range(0,1):
 	diff_time_lim = []
         
         Temp_gain = array(Temp_gain)
-	print 'Temp Gain Mean is:', ma.median(Temp_gain[:,4000])/1e9
+	print 'Temp Gain Mean is (*1e9):', ma.median(Temp_gain[:,4000])/1e9
         Gain_array = array(Gain)
 	single_Gain = real(Gain_array[:,4000])
 	median_Gain = ma.median(real(single_Gain))
@@ -158,6 +157,93 @@ for i in range(0,1):
 #	pylab.plot(diff_time,Gain_fit(diff_time))
 	pylab.savefig('/home/tcv/'+caldir+day_dir+'_Gain_evolution_take4',dpi=300)
 	pylab.clf()
+
+        pylab.imshow(real(Gain),vmax=(median_Gain+10*std_Gain),vmin=0,aspect=100./len(Gain),extent=(40,140,len(Gain),0))
+        cbar = pylab.colorbar()
+        cbar.set_label('Real Gain')
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Cal Sample')
+        pylab.title('Real Gain Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Gain_waterfall_take4',dpi=300)
+        pylab.clf()
+
+        single_GX = imag(Gain_array[:,4000])
+        median_GX = ma.median(single_GX)
+        std_GX = ma.std(single_GX)
+
+        pylab.imshow(imag(Gain),vmax=(median_GX+10*std_GX),vmin=0,aspect=100./len(Gain),extent=(40,140,len(Gain),0))
+        cbar = pylab.colorbar() 
+        cbar.set_label('Imaginary Gain') 
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Cal Sample')
+        pylab.title('Imag Gain Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Gain_waterfall_take4',dpi=300)
+        pylab.clf()
+
+        single_TG = Temp_gain[:,4000] 
+        median_TG = ma.median(single_TG) 
+        std_TG = ma.std(single_TG) 
+
+        pylab.imshow(Temp_gain,vmax=(median_TG+10*std_TG),vmin=0,aspect=100./len(Temp_gain),extent=(40,140,len(Temp_gain),0)) 
+        cbar = pylab.colorbar()  
+        cbar.set_label('Temperature Gain')  
+        pylab.xlabel('Frequency (MHz)') 
+        pylab.ylabel('Cal Sample') 
+        pylab.title('Temperature Gain Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_TempGain_waterfall_take4',dpi=300)
+        pylab.clf() 
+
+        single_VR = real(Vn[:,4000])
+        median_VR = ma.median(single_VR)
+        std_VR = ma.std(single_VR)  
+        
+        pylab.imshow(real(Vn),vmax=(median_VR+10*std_VR),vmin=0,aspect=100./len(Vn),extent=(40,140,len(Vn),0))
+        cbar = pylab.colorbar()   
+        cbar.set_label('Real Vn')
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Cal Sample')  
+        pylab.title('Real Vn Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Vn_waterfall_take4',dpi=300)
+        pylab.clf()  
+
+        single_VX = imag(Vn[:,4000])
+        median_VX = ma.median(single_VX)
+        std_VX = ma.std(single_VX)  
+        
+        pylab.imshow(imag(Vn),vmax=(median_VX+10*std_VX),vmin=0,aspect=100./len(Vn),extent=(40,140,len(Vn),0))
+        cbar = pylab.colorbar()   
+        cbar.set_label('Imag Vn')
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Cal Sample')  
+        pylab.title('Imag Vn Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Vn_waterfall_take4',dpi=300)
+        pylab.clf()  
+
+        single_IR = real(In[:,4000])
+        median_IR = ma.median(single_IR)
+        std_IR = ma.std(single_IR)  
+        
+        pylab.imshow(real(In),vmax=(median_IR+10*std_IR),vmin=0,aspect=100./len(In),extent=(40,140,len(In),0))
+        cbar = pylab.colorbar()   
+        cbar.set_label('Real In')
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Cal Sample')  
+        pylab.title('Real In Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_In_waterfall_take4',dpi=300)
+        pylab.clf()  
+
+        single_IX = imag(In[:,4000])
+        median_IX = ma.median(single_IX)
+        std_IX = ma.std(single_IX)  
+        
+        pylab.imshow(imag(In),vmax=(median_IX+10*std_IX),vmin=0,aspect=100./len(In),extent=(40,140,len(In),0))
+        cbar = pylab.colorbar()   
+        cbar.set_label('Imag In')
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Cal Sample')  
+        pylab.title('Imaginary In Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_In_waterfall_take4',dpi=300)
+        pylab.clf()  
 
 	time_sort = argsort(diff_time)
 	print time_sort

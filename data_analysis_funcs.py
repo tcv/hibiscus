@@ -44,11 +44,17 @@ def loadsingle(fname):
 
     volt = 0.0
     f = open(fname)
-    test = f.readlines(1)
-    for line in range(0,len(test)):
-        if test[line].split('\t')[0]=='#  VIN:':
-            lim = test[line].split('\t')[1]
-            volt = float(lim.split('\n')[0])
+    for i in range(0,20):
+        test = f.readline()
+#        print test.split(' ')
+        if test.split(' ')[-1]=='V\n':
+            volt = test.split(' ')[2]
+
+#    test = f.readlines(1)
+#    for line in range(0,len(test)):
+#        if test[line].split('\t')[0]=='#  VIN:':
+#            lim = test[line].split('\t')[1]
+#            volt = float(lim.split('\n')[0])
 
     return time,form,file_data,mask_data,freq_data,volt
 

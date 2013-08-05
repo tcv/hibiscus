@@ -34,8 +34,11 @@ data = os.listdir(data_dir)
 processed_data = []
 processed_time = []
 processed_freq = []
+processed_volt = []
 dates = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14']
 date_files = []
+day_ends = []
+day_ends.append(0)
 
 if gsm:
     gsm_freq = arange(50,111,1)
@@ -55,9 +58,13 @@ for i in range(0,len(dates)):
     single_time = loadtxt(data_dir+curr_date+'_processed_time_avgcal.txt')
     for j in range(0,len(single_time)):
         processed_time.append(single_time[j])
+    single_volt = loadtxt(data_dir+curr_date+'_processed_volt_avgcal.txt')
+    for l in range(0,len(single_volt)):
+        processed_volt.append(single_volt[l])
     if len(processed_freq)<1:
         processed_freq = loadtxt(data_dir+curr_date+'_processed_freq_avgcal.txt')
     print 'Current Size of Processed Data is:',shape(processed_data)    
+    day_ends.append(len(processed_data))
 	    
 processed_data = array(processed_data)
 processed_time = array(processed_time)
@@ -116,14 +123,33 @@ for i in range(0,len(nandata[0])):
     index=nandata[0,i]
     mean_data[index]=0.0
 
+day_means = []
+for i in range(0,len(day_ends)-1):
+    single_day = []
+    for j in range(0,len(processed_data[0])):
+        single_freq = ma.array(processed_data[day_ends[i]:day_ends[i+1],j],mask=prelim_mask[day_ends[i]:day_ends[i+1],j])
+        single_compress = ma.compressed(single_freq)
+        single_mean = ma.mean(single_compress)
+        single_day.append(single_mean)
+    nandata = where(isnan(single_day))
+    nandata = array(nandata)
+    for k in range(0,len(nandata[0])):
+        index = nandata[0,k]
+        single_day[index] = 0.0
+    day_means.append(single_day)
+
+print 'Daily Mean Shape is:', shape(day_means)
+
 #Base Level power law fit
-fitfunc = lambda p,x: p[0]*x**(-p[1]/2.5)+p[2]
+fitfunc = lambda p,x: p[0]*x**(-p[1]/2.5)
 errfunc = lambda p,x,y: fitfunc(p,x)-y
-p0 = [10.,1.,10.]
+p0 = [10.,1.]
 p,success = opt.leastsq(errfunc,p0,args=(processed_freq,mean_data))
 p1,success = opt.leastsq(errfunc,p,args=(processed_freq[data_lim_ind[0]:data_lim_ind[1]],
                          mean_data[data_lim_ind[0]:data_lim_ind[1]]))
 
+print 'Full Data Fit Params are:',p
+print 'Limited Freq Data Fit Params are:',p1
 #Sidereal Time Calculation
 initial = eph.date('2013/6/1')
 guad = eph.Observer()
@@ -311,6 +337,37 @@ pylab.legend(('Full Data Fit','Fit to %0.1f-%0.1f MHz' %(data_lim[0],data_lim[1]
 pylab.title('Mean Data Spectrum with Power Law Fits')
 pylab.savefig(result_dir+'mean_freq_spectrum_avgcal_fit',dpi=300) 
 pylab.clf()
+
+pylab.scatter(processed_freq,day_means[0],c='b',edgecolor='b',s=1,label='June01')
+pylab.scatter(processed_freq,day_means[2],c='g',edgecolor='g',s=1,label='June03')
+pylab.scatter(processed_freq,day_means[3],c='c',edgecolor='c',s=1,label='June04')
+pylab.scatter(processed_freq,day_means[4],c='r',edgecolor='r',s=1,label='June05')
+pylab.scatter(processed_freq,day_means[5],c='y',edgecolor='y',s=1,label='June06')
+pylab.scatter(processed_freq,day_means[7],c='m',edgecolor='m',s=1,label='June08')
+pylab.scatter(processed_freq,day_means[8],c='k',edgecolor='k',s=1,label='June09')
+pylab.xlabel('Frequency (MHz)') 
+pylab.ylabel('Temperature (Kelvin)') 
+pylab.title('Mean Data Spectrum') 
+pylab.grid() 
+pylab.xlim(40,140) 
+pylab.ylim(0,2e4) 
+pylab.legend()
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_pt1',dpi=300)
+pylab.clf()
+
+pylab.scatter(processed_freq,day_means[10],c='b',edgecolor='b',s=1,label='June11')
+pylab.scatter(processed_freq,day_means[11],c='g',edgecolor='g',s=1,label='June12')
+pylab.scatter(processed_freq,day_means[12],c='c',edgecolor='c',s=1,label='June13')
+pylab.scatter(processed_freq,day_means[13],c='r',edgecolor='r',s=1,label='June14') 
+pylab.xlabel('Frequency (MHz)')  
+pylab.ylabel('Temperature (Kelvin)')  
+pylab.title('Mean Data Spectrum')  
+pylab.grid()  
+pylab.xlim(40,140)  
+pylab.ylim(0,2e4)  
+pylab.legend()
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_pt2',dpi=300) 
+pylab.clf() 
 
 pylab.scatter(sidereal_hour,processed_data[:,100],c='b',edgecolor='b',s=3)
 pylab.scatter(sidereal_hour,processed_data[:,125],c='g',edgecolor='g',s=3)

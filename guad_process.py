@@ -1,3 +1,6 @@
+"""
+Module to process and rebin a single day of data
+"""
 import matplotlib
 matplotlib.use('Agg')
 from numpy import *
@@ -16,12 +19,15 @@ import sys
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+##### Set directories
 #cal_dir = 'Isla_Guadalupe_data_jun_2013/cal_data/'
 cal_dir = '/home/tcv/lustre/cal_data/'
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/June15/'
 data_dir = '/home/tcv/lustre/data_arrays/'
 out_dir = '/home/tcv/lustre/processed_data_noeff/'
 #out_dir = '/home/tcv/lustre/processed_data/'
+
+##### Load Files
 #ant_s11_file = 'Isla_Guadalupe_data_jun_2013/ANT_3_average.s1p'
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
 #amp_s_file = 'Isla_Guadalupe_data_jun_2013/WEA101_AMP_2013-04-04.s2p'
@@ -37,90 +43,7 @@ VnR = loadtxt(cal_dir+'Real_Vn_fit_take4.txt')
 VnX = loadtxt(cal_dir+'Imag_Vn_fit_take4.txt')
 new_freq = loadtxt(cal_dir+'Cal_freq_take4.txt')
 
-#single_TG = Temp_gain[:,1000]
-#mean_TG = ma.median(single_TG)
-#good_ind = []
-#for i in range(0,len(single_TG)):
-#    if single_TG[i]<2*mean_TG:
-#    if single_TG[i]!=NaN:
-#         if single_TG[i]>0:
-#            good_ind.append(i)
-
-##good_ind = [0,]
-#print len(good_ind),len(single_TG)
-#print good_ind
-
-##Temp_gain_sm = zeros((2,len(good_ind),len(Temp_gain[0])))
-##GainR_sm = zeros((2,len(good_ind),len(Temp_gain[0])))
-##GainX_sm = zeros((2,len(good_ind),len(Temp_gain[0])))
-##InR_sm = zeros((2,len(good_ind),len(Temp_gain[0])))
-##InX_sm = zeros((2,len(good_ind),len(Temp_gain[0])))
-##VnR_sm = zeros((2,len(good_ind),len(Temp_gain[0])))
-##VnX_sm = zeros((2,len(good_ind),len(Temp_gain[0])))
-#diff_time_sm = diff_time[good_ind]
-##diff_time_sm = diff_time
-#Temp_gain_sm = []
-#GainR_sm = []
-#GainX_sm = []
-#InR_sm = []
-#InX_sm = []
-#VnR_sm = []
-#VnX_sm = []
-#funct = lambda p,x: p[0]*x+p[1]
-#err = lambda p,x,y: funct(p,x)-y
-#pG=[1e19,1e18]
-#pE = [1e-7,1e-8]
-#for i in range(0,len(Temp_gain[0])):
-##    for j in range(0,len(good_ind)-1):
-##        xind = [diff_time[good_ind[j]],diff_time[good_ind[j+1]]]
-##        yG = [Temp_gain[good_ind[j],i],Temp_gain[good_ind[j+1],i]]
-##        TG,success = opt.leastsq(err,pG[:],args=(xind,yG))
-##        pG = TG
-#    TG = itp.UnivariateSpline(diff_time[good_ind],Temp_gain[good_ind,i],s=0)
-#    Temp_gain_sm.append(TG)
-##        Temp_gain_sm[:,j,i] = TG
-##        yGR = [GainR[good_ind[j],i],GainR[good_ind[j+1],i]]
-##        GR,success = opt.leastsq(err,pE[:],args=(xind,yGR))
-##        pE = GR
-#    GR = itp.UnivariateSpline(diff_time[good_ind],GainR[good_ind,i],s=0)
-#    GainR_sm.append(GR)
-##        GainR_sm[:,j,i] = GR
-##        yGX =[GainX[good_ind[j],i],GainX[good_ind[j+1],i]]
-##        GX,success = opt.leastsq(err,pE[:],args(xind,yGX))
-#    GX = itp.UnivariateSpline(diff_time[good_ind],GainX[good_ind,i],s=0)
-#    GainX_sm.append(GX)
-##        GainX_sm[:,j,i] = GX
-##        yVR = [VnR[good_ind[j],i],VnR[good_ind[j+1],i]]
-##        VR,success = opt.leastsq(err,pE[:],args=(xind,yVR))
-#    VR = itp.UnivariateSpline(diff_time[good_ind],VnR[good_ind,i],s=0)
-#    VnR_sm.append(VR)
-##        VnR_sm[:,j,i] = VR
-##        yVX = [VnX[good_ind[j],i],VnX[good_ind[j+1],i]]
-##        VX,success = opt.leastsq(err,pE[:],args=(xind,yVX))
-#    VX = itp.UnivariateSpline(diff_time[good_ind],VnX[good_ind,i],s=0)
-#    VnX_sm.append(VX)
-##        VnX_sm[:,j,i] = VX
-##        yIR = [InR[good_ind[j],i],InR[good_ind[j+1],i]]
-##        IR,success = opt.leastsq(err,pE[:],args=(xind,yIR))
-#    IR = itp.UnivariateSpline(diff_time[good_ind],InR[good_ind,i],s=0)
-#    InR_sm.append(IR)
-##        InR_sm[:,j,i] = IR
-##        yIX = [InX[good_ind[j],i],InX[good_ind[j+1],i]]
-##        IX,success = opt.leastsq(err,pE[:],args=(xind,yIX))
-#    IX = itp.UnivariateSpline(diff_time[good_ind],InX[good_ind,i],s=0)
-#    InX_sm.append(IX)
-##        InX_sm[:,j,i] = IX
-##        diff_time_sm[j]=diff_time[good_ind[j]]
-##diff_time_sm[-1] = diff_time[good_ind[-1]]
-
-#print shape(InR_sm)
-#ant_time = arange(diff_time[0]-1,diff_time[-1]+1,0.01)
-#pylab.plot(diff_time[good_ind],Temp_gain[good_ind,1000])
-#pylab.plot(ant_time,Temp_gain_sm[1000](ant_time))
-#pylab.savefig(data_dir+'cal_temp',dpi=300)
-#pylab.clf()
-
-
+##### Efficiencey Correction Prep
 R_ant,X_ant,F_ant = fc.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = fc.imped_skrf(amp_s_file,0.0)
 Effic = fc.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
@@ -134,11 +57,14 @@ Z_ant = R_ant_sm(new_freq)+1j*X_ant_sm(new_freq)
 Z50 = 50.*ones(len(new_freq))
 Z100 = 100.*exp(2*pi*array(new_freq)*400*1e-6*1j)
 
+
+##### Load Data
 timescale = 32
 binscale = 32
 full_rebin_ant = []
 full_rebin_time = []
 full_rebin_freq = []
+full_rebin_volt = []
 
 data_arrays = os.listdir(data_dir)
 #dates = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14']
@@ -152,9 +78,6 @@ for f in range(0,len(data_arrays)):
 	if fname.split('_')[-1]=='antenna.txt':
             selected_ind.append(f)
 	
-
-# want to test with a single date.
-#for date_ind in range(1,2):
 for s in range(0,len(selected_ind)):
     fname = data_arrays[selected_ind[s]]
 #    fname = 'June'+dates[date_ind]+'_antenna.txt'
@@ -170,62 +93,33 @@ for s in range(0,len(selected_ind)):
                     ant_time = loadtxt(data_dir+fname2)
                 elif fname2.split('_')[-1]=='freq.txt':
                     new_freq = loadtxt(data_dir+fname2)
+                elif fname2.split('_')[-1]=='volt.txt':
+                    ant_volt = loadtxt(data_dir+fname2)
         new_freq = array(new_freq)
         rebin_ant = array(rebin_ant)
         ant_mask= array(ant_mask)
         ant_mask_full = zeros((len(ant_mask),len(ant_mask[0])))
+
+##### Flag out Time Dependent Outliers
         for j in range(0,len(new_freq)):
             test_mask = fc.timeflag(rebin_ant[:,j],ant_mask[:,j],ant_time,3.,30)
             ant_mask_full[:,j] = test_mask
 
-        data_eff_cal = []
-        for k in range(0,len(rebin_ant)):
-            lin_data = 10.0**(rebin_ant[k]/10.0)
-            corr_data = fc.effcal(Eff_sm,new_freq,lin_data)
-            data_eff_cal.append(corr_data)
+##### Correct for Efficiency
+#        data_eff_cal = []
+#        for k in range(0,len(rebin_ant)):
+#            lin_data = 10.0**(rebin_ant[k]/10.0)
+#            corr_data = fc.effcal(Eff_sm,new_freq,lin_data)
+#            data_eff_cal.append(corr_data)
 #        data_eff_cal_db = 10.0*log10(data_eff_cal)
         data_eff_cal_db = rebin_ant
 
+
+##### Gain Calibration
         ant_eff_noise_corr = []
         for i in range(0,len(data_eff_cal_db)):
-##            index1 = 0
-##            index2 = 0 
-##            time_comp = 100.
-##            corr_index = 0
-##            for j in range(0,len(diff_time)):
-##                if diff_time[j]<ant_time[i]:
-##                    time_comp = abs(diff_time[j]-ant_time[i])
-##                    index2 = index1
-##                    index1 = j
-##                    corr_index = index1
-##                    if abs(diff_time[index2]-ant_time[i])>0.5:
-##                        index2 = j
-##                elif diff_time[-1]<ant_time[i]:
-##                    corr_index = -1
-##            if index1==index2:
-##                Psky = fc.noise_corr(data_eff_cal_db[i],Vn[index1],In[index1],new_freq,Z_amp,Z_ant,Gain[index1],Temp_gain[index1])
-##                Tsky = Temp_gain[index1]*Psky
-##                ant_eff_noise_corr.append(Tsky)
-##            else:
-##                Psky = fc.noise_corr(data_eff_cal_db[i],(Vn[index1]+Vn[index2])/2.,(In[index1]+In[index2])/2.,new_freq,Z_amp,Z_ant,(Gain[index1]+Gain[index2])/2.,(Temp_gain[index1]+Temp_gain[index2])/2.)
-##                Tsky = (Temp_gain[index1]+Temp_gain[index2])*Psky/2.
-##                ant_eff_noise_corr.append(Tsky)
-##            if index2>index1:
-##                corr_index = index1
-##            elif index1>index2:
-##                corr_index = index2
-##            elif index1==index2:
-##                corr_index = index1
             Tsky = zeros(len(data_eff_cal_db[0]))
             for j in range(0,len(data_eff_cal_db[0])):
-#               TGain_s = Temp_gain_sm[j](ant_time[i])
-#               Vn_s = VnR_sm[j](ant_time[i])+1j*VnX_sm[j](ant_time[i])
-#               In_s = InR_sm[j](ant_time[i])+1j*InX_sm[j](ant_time[i])
-#               Gain_s = GainR_sm[j](ant_time[i])+1j*GainX_sm[j](ant_time[i])
-##               TGain_s= Temp_gain_sm[0,corr_index,j]*ant_time[i]+Temp_gain_sm[1,corr_index,j]
-##               Vn_s = VnR_sm[0,corr_index,j]*ant_time[i]+VnR_sm[1,corr_index,j]+VnX_sm[0,corr_index,j]*ant_time[i]*1j+VnX_sm[1,corr_index,j]*1j
-##               In_s = InR_sm[0,corr_index,j]*ant_time[i]+InR_sm[1,corr_index,j]+InX_sm[0,corr_index,j]*ant_time[i]*1j+InX_sm[1,corr_index,j]*1j
-##               Gain_s = GainR_sm[0,corr_index,j]*ant_time[i]+GainR_sm[1,corr_index,j]+GainX_sm[0,corr_index,j]*ant_time[i]*1j+GainX_sm[1,corr_index,j]*1j
                TGain_s = Temp_gain[j]
                Vn_s = VnR[j]+1j*VnX[j]
                In_s = InR[j]+1j*InX[j]
@@ -234,13 +128,11 @@ for s in range(0,len(selected_ind)):
                                     Z_ant[j],Gain_s,TGain_s)
 #               Tsky[j] = TGain_s*Psky
             ant_eff_noise_corr.append(Tsky)
-                
-
         ant_eff_noise_corr = array(ant_eff_noise_corr)
-#        median_time_eff = ma.median(ant_eff_noise_corr,axis=1)
+
+###### Looking at Time Variation
         single_time_eff = ant_eff_noise_corr[:,4000]
 	full_single_median = ma.median(single_time_eff)
-
         single_time_lim = []
         for i in range(0,len(single_time_eff)):
             if single_time_eff[i]>full_single_median/5.:
@@ -248,10 +140,8 @@ for s in range(0,len(selected_ind)):
                     single_time_lim.append(single_time_eff[i])            
         median_single_time = ma.median(single_time_lim)
         std_single_time = ma.std(single_time_lim)
-#        total_median = ma.median(median_time_eff)
 	print 'Plotting Time Variation (median is %0.1f)...' %median_single_time 
 	
-#	fig1 = plt.figure()
         pylab.scatter(ant_time,single_time_eff,c='b',edgecolor='b',s=3)
         pylab.scatter(ant_time,ones(len(ant_time))*(median_single_time),c='g',edgecolor='g',s=3)
         pylab.scatter(ant_time,ones(len(ant_time))*(median_single_time+3*std_single_time),c='r',edgecolor='r',s=3)
@@ -271,9 +161,8 @@ for s in range(0,len(selected_ind)):
 	pylab.savefig(out_dir+sub_date+'_single_freq_median_avgcal',dpi=300)
 #        pylab.savefig(data_dir+fname.split('_')[0]+'single_freq_median_avgcal',dpi=300)
         pylab.clf()
-        
-#        print total_median
-
+   
+###### Additional Masking for wild outliers, NaNs etc.
         new_mask_full = zeros((len(ant_mask_full),len(ant_mask_full[0])))
         for i in range(0,len(ant_mask_full)):
             nandata = where(isnan(ant_eff_noise_corr[i]))[0]
@@ -298,12 +187,6 @@ for s in range(0,len(selected_ind)):
 #                    new_mask_full[i,j] = 1.0
 #                if spike_mask_single[j]==1.0:
 #                    new_mask_full[i,j] = 1.0
-#	    nandata = where(isnan(ant_eff_noise_corr[i]))
-#	    nandata = array(nandata)
-#	    for k in range(0,len(nandata[0])):
-#                index = nandata[0,i]
-#		new_mask_full[i,index]=1.0
-                
 	
 	print 'Plotting Mask...'
         pylab.imshow(new_mask_full,vmin=-0.1,vmax=1.1,aspect=100./len(new_mask_full),extent=(40,140,len(new_mask_full),0.))
@@ -319,11 +202,6 @@ for s in range(0,len(selected_ind)):
         single_time = int(len(new_mask_full)/2)
 	time_used = single_time
 	okay = 0
-#	for i in range(0,single_time-3):
-#	    if okay==0:
-#		if ma.mean(new_mask_full[single_time+i])<0.5:
-#		    okay=1
-#		    time_used = single_time+i	
 	for j in range(0,single_time):
 	    if okay==0:
 		print 'Bad File is:',time_used
@@ -331,7 +209,6 @@ for s in range(0,len(selected_ind)):
 		time_used = time_used-j
 		if meanmask<0.9:
 		    okay=1
-#		    time_used = single_time-j
 	pylab.scatter(new_freq,ant_eff_noise_corr[time_used],c='b',edgecolor='b',s=3)
 	masked_single_time = ma.array(ant_eff_noise_corr[time_used],mask=new_mask_full[time_used])
 	compressed_single_time = ma.compressed(masked_single_time)
@@ -351,6 +228,7 @@ for s in range(0,len(selected_ind)):
 	pylab.clf()
 
 
+####### Rebin in Frequency 
         freqbin_full = []
         freqbin_mask_full = []
         for i in range(0,len(ant_eff_noise_corr)):
@@ -359,6 +237,8 @@ for s in range(0,len(selected_ind)):
                                                               new_freq,binscale)
             freqbin_full.append(freqbin_data)
             freqbin_mask_full.append(freqbin_mask)
+
+###### Rebin in time
         minimum_time = ant_time[0]
         time_ind = 0
 	min_time_ind = 0
@@ -378,6 +258,7 @@ for s in range(0,len(selected_ind)):
                                                              freqbin_mask_full[min_time_ind:i])
                     full_rebin_time.append(ma.mean(ant_time[min_time_ind:i]))
                     full_rebin_ant.append(timebin_data)
+                    full_rebin_volt.append(ma.mean(ant_volt[min_time_ind:i]))
                     min_time_ind = i+1
                     minimum_time = ant_time[i]
                     time_ind = 0
@@ -387,6 +268,7 @@ for s in range(0,len(selected_ind)):
                                                          freqbin_mask_full[min_time_ind:i])
                 full_rebin_time.append(ma.mean(ant_time[min_time_ind:i]))
                 full_rebin_ant.append(timebin_data)
+                full_rebin_volt.append(ma.mean(ant_volt[min_time_ind:i]))
                 min_time_ind = i+1
                 minimum_time = ant_time[i]
                 time_ind = 0
@@ -396,10 +278,12 @@ for s in range(0,len(selected_ind)):
                                                      freqbin_mask_full[min_time_ind:-1])
             full_rebin_time.append(ma.mean(ant_time[min_time_ind:-1]))
             full_rebin_ant.append(timebin_data)
+            full_rebin_volt.append(ma.mean(ant_volt[min_time_ind:-1]))
         print 'Number of Excess Files:',time_ind
         full_rebin_freq = freqbin_freq
         print 'New Data Array Shape:',shape(full_rebin_ant)
 
+###### Write data to output files
 full_rebin_ant = array(full_rebin_ant)
 for i in range(0,len(full_rebin_ant)):
     for j in range(0,len(full_rebin_ant[0])):
@@ -408,15 +292,12 @@ for i in range(0,len(full_rebin_ant)):
 
 full_rebin_time = array(full_rebin_time)
 full_rebin_freq = array(full_rebin_freq)
+full_rebin_volt = array(full_rebin_volt)
 savetxt(out_dir+date+'_processed_data_avgcal.txt',full_rebin_ant,delimiter = ' ')
 savetxt(out_dir+date+'_processed_time_avgcal.txt',full_rebin_time,delimiter = ' ')
 savetxt(out_dir+date+'_processed_freq_avgcal.txt',full_rebin_freq,delimiter = ' ')
+savetxt(out_dir+date+'_processed_volt_avgcal.txt',full_rebin_volt,delimiter = ' ')
 full_rebin_ant = []
 full_rebin_time = []
 full_rebin_freq = []
-                
-        
-
-        
-
-        
+full_rebin_volt = []
