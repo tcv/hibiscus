@@ -89,7 +89,7 @@ def imped(ant_data,cable_len):
 def imped_skrf(file_name,time_delay):
     """
     Calculates impedence from s2p or s1p file
-    Can add a phase shift if needed.
+    Can add a phase shift if needed, but expects time in seconds.
     Also outputs the frequency in MHz.
     """
     data = rf.Network(file_name)

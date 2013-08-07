@@ -18,16 +18,20 @@ import skrf as rf
 import ephem as eph
 
 #Initial Settings:
-gsm = True #If want to do GSM model comparison
-svd = True #If want to do SVD calculations
-full = True #If want to expand waterfall to fill in gaps
-stack = True #If want to stack data by sidereal time
+gsm = False #If want to do GSM model comparison
+svd = False #If want to do SVD calculations
+full = False #If want to expand waterfall to fill in gaps
+stack = False #If want to stack data by sidereal time
+eff = False #If want to play with efficiency and time delay to uneff data
+
 
 #Read in processed data
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/'
 data_dir = '/home/tcv/lustre/processed_data_noeff/'
 result_dir = '/home/tcv/lustre/data_plots_noeff/'
 gsm_raw_data = loadtxt('/home/tcv/guad_extras/gsm_guadalupe.dat')
+ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
+amp_s_file = '/home/tcv/guad_extras/WEA101_AMP_2013-04-04.s2p'
 
 data = os.listdir(data_dir)
 
@@ -74,7 +78,7 @@ print 'Nan Data present',where(isnan(processed_data))[0]
 print 'Inf Data Present',where(isinf(processed_data))[0]
 
 #Limited Frequencies to Try
-data_lim = [60.,90.]
+data_lim = [65.,80.]
 #data_lim = [65.,85.]
 ##################################################################################
 data_lim_ind = [where(processed_freq<data_lim[0])[0][-1],where(processed_freq>data_lim[1])[0][0]]
@@ -123,6 +127,37 @@ for i in range(0,len(nandata[0])):
     index=nandata[0,i]
     mean_data[index]=0.0
 
+#IF need to add efficiency data to other date. 
+R_amp,X_amp,F_amp = fc.imped_skrf(amp_s_file,0.0)
+R_ant,X_ant,F_ant = fc.imped_skrf(ant_s11_file,0.0)
+Effic = fc.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
+Eff_sm = itp.UnivariateSpline(F_ant,Effic)
+#mean_data = fc.effcal(Eff_sm,processed_freq,mean_data)
+
+nandata = where(isnan(mean_data))
+nandata = array(nandata)
+for i in range(0,len(nandata[0])):
+    index=nandata[0,i]
+    mean_data[index]=0.0
+
+#lgdata = where(mean_data>2e4)
+#lgdata = array(lgdata)
+#for i in range(0,len(lgdata[0])):
+#    index = lgdata[0,i]
+
+#Adding efficiency component
+if eff:
+    time_delay = arange(0,1e-8,5e-10)
+    Eff_sm_data = []
+    R_amp,X_amp,F_amp = fc.imped_skrf(amp_s_file,0.0)
+    for i in range(0,len(time_delay)):
+        R_ant,X_ant,F_ant = fc.imped_skrf(ant_s11_file,time_delay[i])
+        Effic = fc.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
+        Eff_sm = itp.UnivariateSpline(F_ant,Effic)
+        new_mean_data = fc.effcal(Eff_sm,processed_freq,mean_data)
+        Eff_sm_data.append(new_mean_data)
+    
+
 day_means = []
 for i in range(0,len(day_ends)-1):
     single_day = []
@@ -139,17 +174,36 @@ for i in range(0,len(day_ends)-1):
     day_means.append(single_day)
 
 print 'Daily Mean Shape is:', shape(day_means)
+day_means = array(day_means)
 
 #Base Level power law fit
-fitfunc = lambda p,x: p[0]*x**(-p[1]/2.5)
-errfunc = lambda p,x,y: fitfunc(p,x)-y
-p0 = [10.,1.]
-p,success = opt.leastsq(errfunc,p0,args=(processed_freq,mean_data))
-p1,success = opt.leastsq(errfunc,p,args=(processed_freq[data_lim_ind[0]:data_lim_ind[1]],
-                         mean_data[data_lim_ind[0]:data_lim_ind[1]]))
+fitfunc = lambda x,p0,p1,p2: p0*x**(-p1)+p2
+#rrfunc = lambda p,x,y: fitfunc(p,x)-y
+pinit = [1e7,2.5,1e2]
+p,success = opt.curve_fit(fitfunc,processed_freq,mean_data,pinit[:],ones(len(mean_data)))
+#p,success = opt.leastsq(errfunc,p0,args=(processed_freq,mean_data))
+p1,success1 = opt.curve_fit(fitfunc,processed_freq[data_lim_ind[0]:data_lim_ind[1]],mean_data[data_lim_ind[0]:data_lim_ind[1]],pinit[:],ones(len(mean_data[data_lim_ind[0]:data_lim_ind[1]])),maxfev=100000)
+#p1,success1 = opt.leastsq(errfunc,p0,args=(processed_freq[data_lim_ind[0]:data_lim_ind[1]],mean_data[data_lim_ind[0]:data_lim_ind[1]]))
+fitfunc2 = lambda x,q0,q1: q0*x**(-2.5)+q1
+#errfunc2 = lambda q,a,b: fitfunc2(q,a)-b
+qinit = [1e7,1e7]
+q,success2 = opt.curve_fit(fitfunc2,processed_freq,mean_data,qinit[:],ones(len(mean_data)))
+q1,success3= opt.curve_fit(fitfunc2,processed_freq[data_lim_ind[0]:data_lim_ind[1]],mean_data[data_lim_ind[0]:data_lim_ind[1]],qinit[:],ones(len(mean_data[data_lim_ind[0]:data_lim_ind[1]])))
+#q,success2 = opt.leastsq(errfunc2,q0,args=(processed_freq,mean_data))
+#q1,success3 = opt.leastsq(errfunc2,q0,args=(processed_freq[data_lim_ind[0]:data_lim_ind[1]],mean_data[data_lim_ind[0]:data_lim_ind[1]]))
 
-print 'Full Data Fit Params are:',p
-print 'Limited Freq Data Fit Params are:',p1
+print 'Full Data Fit Params (variable power law) are:',p
+print 'Full Data Fit Param is:',q
+print 'Limited Freq Data Fit Params (variable power law) are:',p1
+print 'Limited Freq Data Fit Param is:', q1
+
+day_params = []
+for i in range(0,len(day_ends)-1):
+    ptest,ptest_cov = opt.curve_fit(fitfunc,processed_freq[data_lim_ind[0]:data_lim_ind[1]],day_means[i,data_lim_ind[0]:data_lim_ind[1]],pinit[:],ones(len(mean_data[data_lim_ind[0]:data_lim_ind[1]])),maxfev=100000)
+    day_params.append(ptest)
+
+day_params = array(day_params)
+
 #Sidereal Time Calculation
 initial = eph.date('2013/6/1')
 guad = eph.Observer()
@@ -323,7 +377,7 @@ pylab.ylim(0,5e3)
 pylab.savefig(result_dir+'single_freq_time_var_fold_avgcal',dpi=300)
 pylab.clf()
 
-pylab.scatter(processed_freq,mean_data,c='b',edgecolor='b',s=3)
+pylab.scatter(processed_freq,mean_data,c='b',edgecolor='b',s=3,label='Mean Data')
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.title('Mean Data Spectrum')
@@ -331,43 +385,118 @@ pylab.grid()
 pylab.xlim(40,140)
 pylab.ylim(0,2e4)
 pylab.savefig(result_dir+'mean_freq_spectrum_avgcal',dpi=300)
-pylab.plot(processed_freq,fitfunc(p,processed_freq),c='g')
-pylab.plot(processed_freq,fitfunc(p1,processed_freq),c='r')
-pylab.legend(('Full Data Fit','Fit to %0.1f-%0.1f MHz' %(data_lim[0],data_lim[1]),'Mean Data'))
+pylab.plot(processed_freq,fitfunc(processed_freq,p[0],p[1],p[2]),c='g',label='Power Law fit (40-140 MHz)')
+pylab.plot(processed_freq,fitfunc(processed_freq,p1[0],p1[1],p1[2]),c='r',label='Power Law fit (%0.1f-%0.1f MHz)' %(data_lim[0],data_lim[1]))
+pylab.plot(processed_freq,fitfunc2(processed_freq,q[0],q[1]),c='c',label='-2.5 Power Law fit (40-140 MHz)')
+pylab.plot(processed_freq,fitfunc2(processed_freq,q1[0],q1[1]),c='m',label='-2.5 Power Law fit (%0.1f-%0.1f MHz)' %(data_lim[0],data_lim[1]))
+pylab.legend()
 pylab.title('Mean Data Spectrum with Power Law Fits')
 pylab.savefig(result_dir+'mean_freq_spectrum_avgcal_fit',dpi=300) 
+pylab.clf()
+
+pylab.scatter(processed_freq,mean_data-fitfunc(processed_freq,p1[0],p1[1],p1[2]),c='b',edgecolor='b',s=3,label='60-80 MHz Fit (-%0.1f power)' %p1[1])
+pylab.scatter(processed_freq,mean_data-fitfunc2(processed_freq,q1[0],q1[1]),c='g',edgecolor='g',s=3,label='60-80 MHz Fit (-2.5 power)')
+pylab.xlabel('Frequency (MHz')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.xlim(50,100)
+pylab.ylim(100,-100)
+pylab.grid()
+pylab.legend()
+pylab.savefig(result_dir+'mean_freq_spectrum_fit_resid',dpi=300)
 pylab.clf()
 
 pylab.scatter(processed_freq,day_means[0],c='b',edgecolor='b',s=1,label='June01')
 pylab.scatter(processed_freq,day_means[2],c='g',edgecolor='g',s=1,label='June03')
 pylab.scatter(processed_freq,day_means[3],c='c',edgecolor='c',s=1,label='June04')
 pylab.scatter(processed_freq,day_means[4],c='r',edgecolor='r',s=1,label='June05')
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[0,0],day_params[0,1],day_params[0,2]),c='b',label='June01: -%0.2f Fit' %day_params[0,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[2,0],day_params[2,1],day_params[2,2]),c='g',label='June03: -%0.2f Fit' %day_params[2,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[3,0],day_params[3,1],day_params[3,2]),c='c',label='June04: -%0.2f Fit' %day_params[3,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[4,0],day_params[4,1],day_params[4,2]),c='r',label='June05: -%0.2f Fit' %day_params[4,1])
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.title('Mean Daily Data Spectra and Fits')
+pylab.grid()
+pylab.xlim(40,140)
+pylab.ylim(0,2e4)
+pylab.legend()
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit_pt1',dpi=300)
+pylab.clf()
+
 pylab.scatter(processed_freq,day_means[5],c='y',edgecolor='y',s=1,label='June06')
 pylab.scatter(processed_freq,day_means[7],c='m',edgecolor='m',s=1,label='June08')
 pylab.scatter(processed_freq,day_means[8],c='k',edgecolor='k',s=1,label='June09')
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[5,0],day_params[5,1],day_params[5,2]),c='y',label='June06: -%0.2f Fit' %day_params[5,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[7,0],day_params[7,1],day_params[7,2]),c='m',label='June08: -%0.2f Fit' %day_params[7,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[8,0],day_params[8,1],day_params[8,2]),c='k',label='June09: -%0.2f Fit' %day_params[8,1])
 pylab.xlabel('Frequency (MHz)') 
 pylab.ylabel('Temperature (Kelvin)') 
-pylab.title('Mean Data Spectrum') 
+pylab.title('Mean Daily Data Spectra and Fits') 
 pylab.grid() 
 pylab.xlim(40,140) 
 pylab.ylim(0,2e4) 
 pylab.legend()
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_pt1',dpi=300)
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit_pt2',dpi=300)
 pylab.clf()
 
 pylab.scatter(processed_freq,day_means[10],c='b',edgecolor='b',s=1,label='June11')
 pylab.scatter(processed_freq,day_means[11],c='g',edgecolor='g',s=1,label='June12')
 pylab.scatter(processed_freq,day_means[12],c='c',edgecolor='c',s=1,label='June13')
 pylab.scatter(processed_freq,day_means[13],c='r',edgecolor='r',s=1,label='June14') 
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[10,0],day_params[10,1],day_params[10,2]),c='b',label='June11: -%0.2f Fit' %day_params[10,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[11,0],day_params[11,1],day_params[11,2]),c='g',label='June12: -%0.2f Fit' %day_params[11,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2]),c='c',label='June13: -%0.2f Fit')
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2]),c='r',label='June14: -%0.2f Fit')
 pylab.xlabel('Frequency (MHz)')  
 pylab.ylabel('Temperature (Kelvin)')  
-pylab.title('Mean Data Spectrum')  
+pylab.title('Mean Daily Data Spectra and Fits')
 pylab.grid()  
 pylab.xlim(40,140)  
 pylab.ylim(0,2e4)  
 pylab.legend()
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_pt2',dpi=300) 
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit_pt3',dpi=300) 
 pylab.clf() 
+
+pylab.scatter(processed_freq,day_means[0]-fitfunc(processed_freq,day_params[0,0],day_params[0,1],day_params[0,2]),c='b',edgecolor='b',s=1,label='June01: -%0.2f Fit' %day_params[0,1])
+pylab.scatter(processed_freq,day_means[2]-fitfunc(processed_freq,day_params[2,0],day_params[2,1],day_params[2,2]),c='g',edgecolor='g',s=1,label='June03: -%0.2f Fit' %day_params[2,1])
+pylab.scatter(processed_freq,day_means[3]-fitfunc(processed_freq,day_params[3,0],day_params[3,1],day_params[3,2]),c='c',edgecolor='c',s=1,label='June04: -%0.2f Fit' %day_params[3,1])
+pylab.scatter(processed_freq,day_means[4]-fitfunc(processed_freq,day_params[4,0],day_params[4,1],day_params[4,2]),c='r',edgecolor='r',s=1,label='June05: -%0.2f Fit' %day_params[4,1])
+pylab.xlabel('Frequency (MHz)') 
+pylab.ylabel('Temperature (Kelvin)') 
+pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)'%(data_lim[0],data_lim[1]))
+pylab.grid()   
+pylab.xlim(50,100)   
+pylab.ylim(-100,100)   
+pylab.legend()  
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit_resid',dpi=300)
+pylab.clf()  
+
+pylab.scatter(processed_freq,day_means[5]-fitfunc(processed_freq,day_params[5,0],day_params[5,1],day_params[5,2]),c='y',edgecolor='y',s=1,label='June06: -%0.2f Fit' %day_params[5,1])
+pylab.scatter(processed_freq,day_means[7]-fitfunc(processed_freq,day_params[7,0],day_params[7,1],day_params[7,2]),c='m',edgecolor='m',s=1,label='June08: -%0.2f Fit' %day_params[7,1])
+pylab.scatter(processed_freq,day_means[8]-fitfunc(processed_freq,day_params[8,0],day_params[8,1],day_params[8,2]),c='k',edgecolor='k',s=1,label='June09: -%0.2f Fit' %day_params[8,1])
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)'%(data_lim[0],data_lim[1]))
+pylab.grid()  
+pylab.xlim(50,100)  
+pylab.ylim(-100,100)  
+pylab.legend() 
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit_resid_pt2',dpi=300)
+pylab.clf() 
+ 
+pylab.scatter(processed_freq,day_means[10]-fitfunc(processed_freq,day_params[10,0],day_params[10,1],day_params[10,2]),c='b',edgecolor='b',s=1,label='June11: -%0.2f Fit' %day_params[10,1])
+pylab.scatter(processed_freq,day_means[11]-fitfunc(processed_freq,day_params[11,0],day_params[11,1],day_params[11,2]),c='g',edgecolor='g',s=1,label='June12: -%0.2f Fit' %day_params[11,1])
+pylab.scatter(processed_freq,day_means[12]-fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2]),c='c',edgecolor='c',s=1,label='June13: -%0.2f Fit')
+pylab.scatter(processed_freq,day_means[13]-fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2]),c='r',edgecolor='r',s=1,label='June14: -%0.2f Fit')
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)' %(data_lim[0],data_lim[1]))
+pylab.grid()   
+pylab.xlim(50,100)   
+pylab.ylim(-100,100)   
+pylab.legend() 
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit_resid_pt3',dpi=300)
+pylab.clf()  
 
 pylab.scatter(sidereal_hour,processed_data[:,100],c='b',edgecolor='b',s=3)
 pylab.scatter(sidereal_hour,processed_data[:,125],c='g',edgecolor='g',s=3)

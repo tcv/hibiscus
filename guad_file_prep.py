@@ -63,7 +63,8 @@ if int(date_ind)<15:
                         rebin_ant.append(new_data)
                         ant_time.append(time)
                         ant_mask.append(new_mask)
-                        ant_volt.append(volt)
+                        ant_volt.append(float(volt))
+#                        print volt
 	time_sort = argsort(ant_time)
 #	print time_sort
 	rebin_ant_sort = []
@@ -78,6 +79,7 @@ if int(date_ind)<15:
 	
 	i=-1
 	print 'Number of datasets in Day:',len(rebin_ant)
+        print shape(ant_volt_sort)
 	for i in range(0,len(rebin_ant)/500):
 	    set = str(i)
             savetxt('/home/tcv/'+daydir+date+'-'+set+'_antenna.txt',rebin_ant_sort[i*500:(i+1)*500],delimiter = ' ')

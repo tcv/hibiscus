@@ -106,6 +106,17 @@ for i in range(0,1):
 	Z_ant = R_ant_sm(new_freq)+1j*X_ant_sm(new_freq)
 	Z50 = 50.*ones(len(new_freq))
 	Z100 = 100.*exp(2*pi*array(new_freq)*400*1e-6*1j)
+        
+        gamma_amp = (Z_amp-Z50)/(Z_amp+Z50)
+        gamma_ant = (Z_ant-Z50)/(Z_ant+Z50)
+        F = sqrt(1-real(gamma_amp*conj(gamma_amp)))/(1-gamma_amp*gamma_ant)
+        G = real(1-gamma_amp*conj(gamma_amp))
+        gamma_100 = (Z100-Z50)/(Z100+Z50)
+        phi = angle(gamma_ant*F)
+        F100 = sqrt(1-real(gamma_amp*conj(gamma_amp)))/(1-gamma_amp*gamma_100)
+        phi100 = angle(gamma_100*F100)
+        
+
 
 	In = []
 	Vn = []
