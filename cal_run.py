@@ -55,6 +55,7 @@ for i in range(0,1):
 	load = []
 	load_time = []
         load_volt = []
+        load_temp = []
 	term = []
 	term_time = []
 	short = []
@@ -68,7 +69,7 @@ for i in range(0,1):
             filename=directory+fname
             if fname.split('.')[-1]=='dat':
                 if fname.split('_')[-1]!='antenna.dat':
-                    time,form,sub_data,mask,freq,volt = fc.loadsingle(filename)
+                    time,form,sub_data,mask,freq,volt,temp = fc.loadsingle(filename)
                     width = 250.0/len(sub_data)
                     freqs = arange(0,250.0,width)
                     if len(sub_data)>1:
@@ -79,6 +80,7 @@ for i in range(0,1):
                             load.append(new_data)
                             load_time.append(time)
                             load_volt.append(volt)
+                            load_temp.append(temp)
                         elif form=='open':
                             mask = zeros(len(sub_data))
                             new_data,new_mask,new_freq = fc.rebin(sub_data,mask,freqs,binscale)
@@ -113,6 +115,7 @@ for i in range(0,1):
 	Temp_gain = []
 	diff_time = []
         diff_volt = []
+        diff_temp = []
 	for j in range(0,len(short_time)):
     	    for i in range(0,len(load_time)):
 	        for k in range(0,len(term_time)):
@@ -120,21 +123,24 @@ for i in range(0,1):
                 	if abs(load_time[i]-short_time[j])<0.01:
 	                    if abs(load_time[i]-term_time[k])<0.01:
         	                if abs(noise_time[l]-load_time[i])<0.01:
-                	            Vn0,In0,G0,T0 = fc.noise_calc(load[i],short[j],term[k],noise[l],Z_amp,new_freq)
+                	            Vn0,In0,G0,T0 = fc.noise_calc(load[i],short[j],term[k],noise[l],Z_amp,new_freq,load_temp[i])
                         	    Vn.append(Vn0)
 	                            In.append(In0)
         	                    Gain.append(G0)
                 	            Temp_gain.append(T0)
                         	    diff_time.append(short_time[j])
                                     diff_volt.append(load_volt[i])
+                                    diff_temp.append(load_temp[i])
+   
 
 	print 'Number of Calibration Datasets is:',shape(diff_time)
 
-	if len(Gain)<2.:
-	   calscale=len(Gain)
-	else:
-	   calscale=2
+#if len(Gain)<2.:
+#   calscale=len(Gain)
+#else:
+#   calscale=2
 #	calscale = int(len(Gain)/10.)
+        calscale=1
 	calset = 0
 	In_avg = []
 	Vn_avg = []
@@ -142,12 +148,14 @@ for i in range(0,1):
 	TempG_avg = []
 	diff_time_avg = []
         diff_volt_avg = []
+        diff_temp_avg = []
 	In_lim = []
 	Vn_lim = []
 	Gain_lim = []
 	TempG_lim = []
 	diff_time_lim = []
         diff_volt_lim = []
+        diff_temp_lim = []
         
         Temp_gain = array(Temp_gain)
 	print 'Temp Gain Mean is (*1e9):', ma.median(Temp_gain[:,4000])/1e9
@@ -261,13 +269,15 @@ for i in range(0,1):
 	TempG_sort = []
 	diff_time_sort = []
         diff_volt_sort = []
+        diff_temp_sort = []
 	for t in range(0,len(diff_time)):
 	    diff_time_sort.append(diff_time[time_sort[t]])
 	    Vn_sort.append(Vn[time_sort[t]])
 	    In_sort.append(In[time_sort[t]])
 	    Gain_sort.append(Gain[time_sort[t]])
 	    TempG_sort.append(Temp_gain[time_sort[t]])
-            diff_volt_sort.append(time_sort[t])
+            diff_volt_sort.append(diff_volt[time_sort[t]])
+            diff_temp_sort.append(diff_temp[time_sort[t]])
 
 	max_lim = median_Gain+3*std_Gain
 	min_lim = median_Gain-3*std_Gain
@@ -282,7 +292,7 @@ for i in range(0,1):
 	            time_test = diff_time_lim[-1]
 #        	if absolute(diff_time[i]-time_test)>0.5:
 		if absolute(diff_time_sort[i]-time_test)>1.:
-	            if len(In_lim)>1:
+	            if len(In_lim)>=1:
                         print 'Number of Samples to be Averaged is:',len(diff_time_lim)
 #        	        print 'Number of Averaged Samples is:',len(diff_time_lim)
                 	In_lim_mean = ma.mean(In_lim,axis=0)
@@ -300,6 +310,8 @@ for i in range(0,1):
                 	diff_time_lim = []
                         diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
                         diff_volt_lim = []
+                        diff_temp_avg.append(ma.mean(diff_temp_lim,axis=0))
+                        diff_temp_lim = []
 	                calset=0
         	In_lim.append(In_sort[i])
 	        Vn_lim.append(Vn_sort[i])
@@ -307,6 +319,7 @@ for i in range(0,1):
 	        TempG_lim.append(TempG_sort[i])
         	diff_time_lim.append(diff_time_sort[i])
                 diff_volt_lim.append(diff_volt_sort[i])
+                diff_temp_lim.append(diff_temp_sort[i])
 	        calset = calset+1
         	if calset==calscale:
                     print 'Number of Samples to be Averaged is:',len(diff_time_lim)
@@ -323,6 +336,8 @@ for i in range(0,1):
 	            diff_time_lim = []
                     diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
                     diff_volt_lim = []
+                    diff_temp_avg.append(ma.mean(diff_temp_lim,axis=0))
+                    diff_temp_lim = []
         	    calset=0
 	    elif single_Gain[i]<max_lim:
         	if len(diff_time_lim)<1:
@@ -349,6 +364,8 @@ for i in range(0,1):
                 	diff_time_lim = []
                         diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
                         diff_volt_lim = []
+                        diff_temp_avg.append(ma.mean(diff_temp_lim,axis=0))
+                        diff_temp_lim = []
 	                calset=0
         	In_lim.append(In_sort[i])
 	        Vn_lim.append(Vn_sort[i])
@@ -356,6 +373,7 @@ for i in range(0,1):
 	        TempG_lim.append(TempG_sort[i])
         	diff_time_lim.append(diff_time_sort[i])
                 diff_volt_lim.append(diff_volt_sort[i])
+                diff_temp_lim.append(diff_temp_sort[i])
 	        calset = calset+1
         	if calset==calscale:
 	            print 'Number of Samples to be Averaged is:',len(diff_time_lim)
@@ -371,6 +389,8 @@ for i in range(0,1):
 	            diff_time_lim = []
                     diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
                     diff_volt_lim = []
+                    diff_temp_avg.append(ma.mean(diff_temp_lim,axis=0))
+                    diff_temp_lim = []
         	    calset=0
 
 	if len(diff_time_lim)>1:
@@ -386,6 +406,8 @@ for i in range(0,1):
 	    diff_time_lim = []
             diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
             diff_volt_lim = []
+            diff_temp_avg.append(ma.mean(diff_temp_lim,axis=0))
+            diff_temp_lim = []
 	    calset=0
 
 	print 'Final Number of Averaged Datasets is:',len(diff_time_avg)
@@ -400,3 +422,4 @@ for i in range(0,1):
 	savetxt('/home/tcv/'+caldir+day_dir+'Cal_time.txt',diff_time_avg,delimiter=' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'Cal_freq.txt',new_freq,delimiter=' ')
         savetxt('/home/tcv/'+caldir+day_dir+'Cal_volt.txt',diff_volt_avg,delimiter=' ')
+        savetxt('/home/tcv/'+caldir+day_dir+'Cal_temp.txt',diff_temp_avg,delimiter=' ')

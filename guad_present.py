@@ -20,15 +20,15 @@ import ephem as eph
 #Initial Settings:
 gsm = False #If want to do GSM model comparison
 svd = False #If want to do SVD calculations
-full = False #If want to expand waterfall to fill in gaps
+full = True #If want to expand waterfall to fill in gaps
 stack = False #If want to stack data by sidereal time
 eff = False #If want to play with efficiency and time delay to uneff data
 
 
 #Read in processed data
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/'
-data_dir = '/home/tcv/lustre/processed_data_noeff/'
-result_dir = '/home/tcv/lustre/data_plots_noeff/'
+data_dir = '/home/tcv/lustre/processed_data_min/'
+result_dir = '/home/tcv/lustre/data_plots_min/'
 gsm_raw_data = loadtxt('/home/tcv/guad_extras/gsm_guadalupe.dat')
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
 amp_s_file = '/home/tcv/guad_extras/WEA101_AMP_2013-04-04.s2p'
@@ -445,8 +445,8 @@ pylab.scatter(processed_freq,day_means[12],c='c',edgecolor='c',s=1,label='June13
 pylab.scatter(processed_freq,day_means[13],c='r',edgecolor='r',s=1,label='June14') 
 pylab.plot(processed_freq,fitfunc(processed_freq,day_params[10,0],day_params[10,1],day_params[10,2]),c='b',label='June11: -%0.2f Fit' %day_params[10,1])
 pylab.plot(processed_freq,fitfunc(processed_freq,day_params[11,0],day_params[11,1],day_params[11,2]),c='g',label='June12: -%0.2f Fit' %day_params[11,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2]),c='c',label='June13: -%0.2f Fit')
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2]),c='r',label='June14: -%0.2f Fit')
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2]),c='c',label='June13: -%0.2f Fit' %day_params[12,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2]),c='r',label='June14: -%0.2f Fit' %day_params[13,1])
 pylab.xlabel('Frequency (MHz)')  
 pylab.ylabel('Temperature (Kelvin)')  
 pylab.title('Mean Daily Data Spectra and Fits')

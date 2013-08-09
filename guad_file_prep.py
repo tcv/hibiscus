@@ -19,6 +19,7 @@ rebin_ant = []
 ant_time = []
 ant_mask = []
 ant_volt = []
+ant_temp = []
 binscale = 1
 timescale = 1
 ant_limit = []
@@ -46,7 +47,7 @@ if int(date_ind)<15:
         for fname in dirlist:
 	    if len(fname.split('_'))>=3:
 	        filename=directory+fname
-                time,form,sub_data,mask,freq,volt = fc.loadsingle(filename)
+                time,form,sub_data,mask,freq,volt,temp = fc.loadsingle(filename)
                 width = 250.0/len(sub_data)
                 freqs = arange(0,250.0,width)
                 if len(sub_data)>1:
@@ -64,6 +65,7 @@ if int(date_ind)<15:
                         ant_time.append(time)
                         ant_mask.append(new_mask)
                         ant_volt.append(float(volt))
+                        ant_temp.append(float(temp))
 #                        print volt
 	time_sort = argsort(ant_time)
 #	print time_sort
@@ -71,11 +73,13 @@ if int(date_ind)<15:
 	ant_time_sort = [] 
 	ant_mask_sort = []
         ant_volt_sort = []
+        ant_temp_sort = []
 	for t in range(0,len(rebin_ant)):
 	    rebin_ant_sort.append(rebin_ant[time_sort[t]])
 	    ant_time_sort.append(ant_time[time_sort[t]])
 	    ant_mask_sort.append(ant_mask[time_sort[t]])
             ant_volt_sort.append(ant_volt[time_sort[t]])
+            ant_temp_sort.append(ant_temp[time_sort[t]])
 	
 	i=-1
 	print 'Number of datasets in Day:',len(rebin_ant)
@@ -87,18 +91,21 @@ if int(date_ind)<15:
             savetxt('/home/tcv/'+daydir+date+'-'+set+'_mask.txt',ant_mask_sort[i*500:(i+1)*500],delimiter=' ')
             savetxt('/home/tcv/'+daydir+date+'-'+set+'_freq.txt',new_freq,delimiter=' ')
             savetxt('/home/tcv/'+daydir+date+'-'+set+'_volt.txt',ant_volt_sort[i*500:(i+1)*500],delimiter=' ')
+            savetxt('/home/tcv/'+daydir+date+'-'+set+'_temp.txt',ant_temp_sort[i*500:(i+1)*500],delimiter=' ')
 	set = str(i+1)
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_antenna.txt',rebin_ant_sort[(i+1)*500:-1],delimiter = ' ')
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_time.txt',ant_time_sort[(i+1)*500:-1],delimiter=' ')
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_mask.txt',ant_mask_sort[(i+1)*500:-1],delimiter=' ')
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_freq.txt',new_freq,delimiter=' ') 
         savetxt('/home/tcv/'+daydir+date+'-'+set+'_volt.txt',ant_volt_sort[(i+1)*500:-1],delimiter=' ')
+        savetxt('/home/tcv/'+daydir+date+'-'+set+'_temp.txt',ant_temp_sort[(i+1)*500:-1],delimiter=' ')
 
 	print 'Number of Files in Day:',int(set)+1
         rebin_ant = []
         ant_time = []
         ant_mask = []
         ant_volt = []
+        ant_temp = []
 #                        if len(time_limit)<1:
 #                            time_test = time
 #                        else:

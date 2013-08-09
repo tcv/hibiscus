@@ -13,7 +13,7 @@ import sys
 
 #maindir = 'Isla_Guadalupe_data_jun_2013/June15_day_to_night/'
 maindir = '/lustre/anat/Guadalupe_data/'
-caldir = '/lustre/cal_data/'
+caldir = '/lustre/cal_data_rb/'
 #day_dir = 'Isla_Guadalupe_data_jun_2013/cal_data/June15/'
 load = []
 load_time = []
@@ -115,15 +115,14 @@ for i in range(0,1):
         phi = angle(gamma_ant*F)
         F100 = sqrt(1-real(gamma_amp*conj(gamma_amp)))/(1-gamma_amp*gamma_100)
         phi100 = angle(gamma_100*F100)
-        
 
-
-	In = []
-	Vn = []
-	Gain = []
-	Temp_gain = []
-	diff_time = []
+        Tu = []
+        Ts = []
+        Tc = []
+        int_freq = []
+        diff_time = []
         diff_volt = []
+        T100_meas = []
 	for j in range(0,len(short_time)):
     	    for i in range(0,len(load_time)):
 	        for k in range(0,len(term_time)):
@@ -131,283 +130,116 @@ for i in range(0,1):
                 	if abs(load_time[i]-short_time[j])<0.01:
 	                    if abs(load_time[i]-term_time[k])<0.01:
         	                if abs(noise_time[l]-load_time[i])<0.01:
-                	            Vn0,In0,G0,T0 = fc.noise_calc(load[i],short[j],term[k],noise[l],Z_amp,new_freq)
-                        	    Vn.append(Vn0)
-	                            In.append(In0)
-        	                    Gain.append(G0)
-                	            Temp_gain.append(T0)
+                	            Tu_sin,Ts_sin,Tc_sin,int_freq = fc.rb_noise_calc(load[i],short[j],term[k],noise[l],Z_amp,new_freq)
                         	    diff_time.append(short_time[j])
                                     diff_volt.append(load_volt[i])
+                                    Tu.append(Tu_sin)
+                                    Ts.append(Ts_sin)
+                                    Tc.append(Tc_sin)
+                                    T100_sin = (10**(term[i]/10.)-10**(short[j]/10.))/(10**(noise[l]/10.)-10**(load[i]/10.))
+                                    T100_meas.append(T100_sin)
 
 	print 'Number of Calibration Datasets is:',shape(diff_time)
 
-	if len(Gain)<2.:
-	   calscale=len(Gain)
-	else:
-	   calscale=2
-#	calscale = int(len(Gain)/10.)
-	calset = 0
-	In_avg = []
-	Vn_avg = []
-	Gain_avg = []
-	TempG_avg = []
-	diff_time_avg = []
-        diff_volt_avg = []
-	In_lim = []
-	Vn_lim = []
-	Gain_lim = []
-	TempG_lim = []
-	diff_time_lim = []
-        diff_volt_lim = []
-        
-        Temp_gain = array(Temp_gain)
-	print 'Temp Gain Mean is (*1e9):', ma.median(Temp_gain[:,4000])/1e9
-        Gain_array = array(Gain)
-	single_Gain = real(Gain_array[:,4000])
-	median_Gain = ma.median(real(single_Gain))
-	std_Gain = ma.std(real(single_Gain))
-	print 'Plotting Gain Evolution over Time (median is %0.1f)...' %median_Gain
-	pylab.scatter(diff_time,single_Gain,c='b',edgecolor='b')
-	pylab.scatter(diff_time,ones(len(single_Gain))*(median_Gain-3*std_Gain),c='g',edgecolor='g')
-	pylab.scatter(diff_time,ones(len(single_Gain))*(median_Gain+3*std_Gain),c='r',edgecolor='r')
-#	Gain_fit = itp.UnivariateSpline(diff_time,real(single_Gain))
-#	pylab.plot(diff_time,Gain_fit(diff_time))
-	pylab.savefig('/home/tcv/'+caldir+day_dir+'_Gain_evolution_take4',dpi=300)
-	pylab.clf()
+        Tu = array(Tu)
+	Ts = array(Ts)
+	Tc = array(Tc)
+        print shape(Tu)
 
-        pylab.imshow(real(Gain),vmax=(median_Gain+10*std_Gain),vmin=0,aspect=100./len(Gain),extent=(40,140,len(Gain),0))
+        pylab.plot(new_freq,T100_meas[0])
+        pylab.plot(new_freq,T100_meas[1])
+        pylab.plot(new_freq,T100_meas[2])
+        pylab.plot(new_freq,T100_meas[3])
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Temperature (Kelvin)')
+        pylab.title('Test 100 Ohm Resistor Temperature')
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'T100_test',dpi=300)
+        pylab.clf()
+         
+
+        print ma.median(Tu,axis=1)
+        print ma.median(Ts,axis=1)
+        print ma.median(Tc,axis=1)
+
+	single_Tu = Tu[:,20]
+	median_Tu = ma.median(single_Tu)
+	std_Tu = ma.std(single_Tu)
+        vminTu = 0
+        vmaxTu = median_Tu+10*std_Tu
+#        if median_Tu<0: 
+#            vminTu = median_Tu-10*std_Tu 
+#            vmaxTu = median_Tu+10*std_Tu 
+#        else: 
+#            vminTu = median_Tu-10*std_Tu 
+#            vmaxTu = median_Tu+10*std_Tu 
+        pylab.imshow(Tu,vmax=vmaxTu,vmin=vminTu,aspect=100./len(Tu),extent=(40,140,len(Tu),0))
         cbar = pylab.colorbar()
-        cbar.set_label('Real Gain')
+        cbar.set_label('Temperature (Noise Cal Temp Units)')
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')
-        pylab.title('Real Gain Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Gain_waterfall_take4',dpi=300)
+        pylab.title('Tu Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Tu_waterfall',dpi=300)
         pylab.clf()
 
-        single_GX = imag(Gain_array[:,4000])
-        median_GX = ma.median(single_GX)
-        std_GX = ma.std(single_GX)
-
-        pylab.imshow(imag(Gain),vmin=(median_GX-10*std_GX),vmax=0,aspect=100./len(Gain),extent=(40,140,len(Gain),0))
+        single_Tc = Tc[:,20]
+        median_Tc = ma.median(single_Tc)
+        std_Tc = ma.std(single_Tc)
+        vminTc = 0
+        vmaxTc = median_Tc+10*std_Tc
+#        if median_Tc<0:
+#            vminTc = median_Tc-10*std_Tc
+#            vmaxTc = median_Tc+10*std_Tc
+#        else:
+#            vminTc = median_Tc-10*std_Tc
+#            vmaxTc = median_Tc+10*std_Tc
+        pylab.imshow(Tc,vmin=vminTc,vmax=vmaxTc,aspect=100./len(Tc),extent=(40,140,len(Tc),0))
         cbar = pylab.colorbar() 
-        cbar.set_label('Imaginary Gain') 
+        cbar.set_label('Temperature (Noise Cal Temp Units)') 
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')
-        pylab.title('Imag Gain Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Gain_waterfall_take4',dpi=300)
+        pylab.title('Tc Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Tc_waterfall',dpi=300)
         pylab.clf()
 
-        single_TG = Temp_gain[:,4000] 
-        median_TG = ma.median(single_TG) 
-        std_TG = ma.std(single_TG) 
+        single_Ts = Ts[:,20]
+        median_Ts = ma.median(single_Ts) 
+        std_Ts = ma.std(single_Ts) 
+        vminTs = 0
+        vmaxTs = median_Ts+10*std_Ts
+#        if median_Ts<0:
+#            vminTs = median_Ts-10*std_Ts
+#            vmaxTs = median_Ts+10*std_Ts
+#        else:
+#            vminTs = median_Ts-10*std_Ts
+#            vmaxTs = median_Ts+10*std_Ts
 
-        pylab.imshow(Temp_gain,vmax=(median_TG+100*std_TG),vmin=0,aspect=100./len(Temp_gain),extent=(40,140,len(Temp_gain),0)) 
+        pylab.imshow(Ts,vmax=vmaxTs,vmin=vminTs,aspect=100./len(Ts),extent=(40,140,len(Ts),0)) 
         cbar = pylab.colorbar()  
-        cbar.set_label('Temperature Gain')  
+        cbar.set_label('Temperature (Noise Cal Temp Units)')  
         pylab.xlabel('Frequency (MHz)') 
         pylab.ylabel('Cal Sample') 
-        pylab.title('Temperature Gain Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_TempGain_waterfall_take4',dpi=300)
+        pylab.title('Ts Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Ts_waterfall',dpi=300)
         pylab.clf() 
-
-        Vn = array(Vn)
-        single_VR = real(Vn[:,4000])
-        median_VR = ma.median(single_VR)
-        std_VR = ma.std(single_VR)  
-        
-        pylab.imshow(real(Vn),vmax=(median_VR+10*std_VR),vmin=0,aspect=100./len(Vn),extent=(40,140,len(Vn),0))
-        cbar = pylab.colorbar()   
-        cbar.set_label('Real Vn')
-        pylab.xlabel('Frequency (MHz)')
-        pylab.ylabel('Cal Sample')  
-        pylab.title('Real Vn Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Vn_waterfall_take4',dpi=300)
-        pylab.clf()  
-
-        single_VX = imag(Vn[:,4000])
-        median_VX = ma.median(single_VX)
-        std_VX = ma.std(single_VX)  
-        
-        pylab.imshow(imag(Vn),vmax=(median_VX+10*std_VX),vmin=0,aspect=100./len(Vn),extent=(40,140,len(Vn),0))
-        cbar = pylab.colorbar()   
-        cbar.set_label('Imag Vn')
-        pylab.xlabel('Frequency (MHz)')
-        pylab.ylabel('Cal Sample')  
-        pylab.title('Imag Vn Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Vn_waterfall_take4',dpi=300)
-        pylab.clf()  
-
-        In = array(In)
-        single_IR = real(In[:,4000])
-        median_IR = ma.median(single_IR)
-        std_IR = ma.std(single_IR)  
-        
-        pylab.imshow(real(In),vmax=(median_IR+10*std_IR),vmin=0,aspect=100./len(In),extent=(40,140,len(In),0))
-        cbar = pylab.colorbar()   
-        cbar.set_label('Real In')
-        pylab.xlabel('Frequency (MHz)')
-        pylab.ylabel('Cal Sample')  
-        pylab.title('Real In Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_In_waterfall_take4',dpi=300)
-        pylab.clf()  
-
-        single_IX = imag(In[:,4000])
-        median_IX = ma.median(single_IX)
-        std_IX = ma.std(single_IX)  
-        
-        pylab.imshow(imag(In),vmax=(median_IX+10*std_IX),vmin=0,aspect=100./len(In),extent=(40,140,len(In),0))
-        cbar = pylab.colorbar()   
-        cbar.set_label('Imag In')
-        pylab.xlabel('Frequency (MHz)')
-        pylab.ylabel('Cal Sample')  
-        pylab.title('Imaginary In Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_In_waterfall_take4',dpi=300)
-        pylab.clf()  
 
 	time_sort = argsort(diff_time)
 	print time_sort
-	Vn_sort = []
-	In_sort = []
-	Gain_sort = []
-	TempG_sort = []
+	Tu_sort = []
+	Ts_sort = []
+	Tc_sort = []
 	diff_time_sort = []
         diff_volt_sort = []
 	for t in range(0,len(diff_time)):
 	    diff_time_sort.append(diff_time[time_sort[t]])
-	    Vn_sort.append(Vn[time_sort[t]])
-	    In_sort.append(In[time_sort[t]])
-	    Gain_sort.append(Gain[time_sort[t]])
-	    TempG_sort.append(Temp_gain[time_sort[t]])
-            diff_volt_sort.append(time_sort[t])
+	    Tu_sort.append(Tu[time_sort[t]])
+	    Ts_sort.append(Ts[time_sort[t]])
+	    Tc_sort.append(Tc[time_sort[t]])
+            diff_volt_sort.append(diff_volt[time_sort[t]])
 
-	max_lim = median_Gain+3*std_Gain
-	min_lim = median_Gain-3*std_Gain
-	if min_lim<0:
-	    min_lim = 0
 
-	for i in range(0,len(diff_time_sort)):
-	    if single_Gain[i]>min_lim:
-        	if len(diff_time_lim)<1:
-	            time_test = diff_time_sort[i]
-        	else:
-	            time_test = diff_time_lim[-1]
-#        	if absolute(diff_time[i]-time_test)>0.5:
-		if absolute(diff_time_sort[i]-time_test)>1.:
-	            if len(In_lim)>1:
-                        print 'Number of Samples to be Averaged is:',len(diff_time_lim)
-#        	        print 'Number of Averaged Samples is:',len(diff_time_lim)
-                	In_lim_mean = ma.mean(In_lim,axis=0)
-	                In_avg.append(In_lim_mean)
-        	        In_lim = []
-                	Vn_lim_mean = ma.mean(Vn_lim,axis=0)
-	                Vn_avg.append(Vn_lim_mean)
-        	        Vn_lim = []
-                	Gain_lim_mean = ma.mean(Gain_lim,axis=0)
-	                Gain_avg.append(Gain_lim_mean)
-        	        Gain_lim = []
-                	TempG_avg.append(ma.mean(TempG_lim,axis=0))
-	                TempG_lim = []
-        	        diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
-                	diff_time_lim = []
-                        diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
-                        diff_volt_lim = []
-	                calset=0
-        	In_lim.append(In_sort[i])
-	        Vn_lim.append(Vn_sort[i])
-        	Gain_lim.append(Gain_sort[i])
-	        TempG_lim.append(TempG_sort[i])
-        	diff_time_lim.append(diff_time_sort[i])
-                diff_volt_lim.append(diff_volt_sort[i])
-	        calset = calset+1
-        	if calset==calscale:
-                    print 'Number of Samples to be Averaged is:',len(diff_time_lim)
-#	            print 'Number of Averaged Samples is:',len(diff_time_lim)
-        	    In_avg.append(ma.mean(In_lim,axis=0))
-	            In_lim = []
-        	    Vn_avg.append(ma.mean(Vn_lim,axis=0))
-	            Vn_lim = []
-        	    Gain_avg.append(ma.mean(Gain_lim,axis=0))
-	            Gain_lim = []
-        	    TempG_avg.append(ma.mean(TempG_lim,axis=0))
-	            TempG_lim = []
-        	    diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
-	            diff_time_lim = []
-                    diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
-                    diff_volt_lim = []
-        	    calset=0
-	    elif single_Gain[i]<max_lim:
-        	if len(diff_time_lim)<1:
-	            time_test = diff_time_sort[i]
-        	else:
-	            time_test = diff_time_lim[-1]
-#        	if absolute(diff_time[i]-time_test)>0.5:
-		if absolute(diff_time_sort[i]-time_test)>1.:
-	            if len(In_lim)>1:
-                        print 'Number of Samples to be Averaged is:',len(diff_time_lim)
-#        	        print 'Number of Averaged Samples is:',len(diff_time_lim)
-                	In_lim_mean = ma.mean(In_lim,axis=0)
-	                In_avg.append(In_lim_mean)
-        	        In_lim = []
-                	Vn_lim_mean = ma.mean(Vn_lim,axis=0)
-	                Vn_avg.append(Vn_lim_mean)
-        	        Vn_lim = []
-                	Gain_lim_mean = ma.mean(Gain_lim,axis=0)
-	                Gain_avg.append(Gain_lim_mean)
-        	        Gain_lim = []
-                	TempG_avg.append(ma.mean(TempG_lim,axis=0))
-	                TempG_lim = []
-        	        diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
-                	diff_time_lim = []
-                        diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
-                        diff_volt_lim = []
-	                calset=0
-        	In_lim.append(In_sort[i])
-	        Vn_lim.append(Vn_sort[i])
-        	Gain_lim.append(Gain_sort[i])
-	        TempG_lim.append(TempG_sort[i])
-        	diff_time_lim.append(diff_time_sort[i])
-                diff_volt_lim.append(diff_volt_sort[i])
-	        calset = calset+1
-        	if calset==calscale:
-	            print 'Number of Samples to be Averaged is:',len(diff_time_lim)
-        	    In_avg.append(ma.mean(In_lim,axis=0))
-	            In_lim = []
-        	    Vn_avg.append(ma.mean(Vn_lim,axis=0))
-	            Vn_lim = []
-        	    Gain_avg.append(ma.mean(Gain_lim,axis=0))
-	            Gain_lim = []
-        	    TempG_avg.append(ma.mean(TempG_lim,axis=0))
-	            TempG_lim = []
-        	    diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
-	            diff_time_lim = []
-                    diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
-                    diff_volt_lim = []
-        	    calset=0
-
-	if len(diff_time_lim)>1:
-	    In_avg.append(ma.mean(In_lim,axis=0))
-	    In_lim = []
-	    Vn_avg.append(ma.mean(Vn_lim,axis=0))
-	    Vn_lim = []
-	    Gain_avg.append(ma.mean(Gain_lim,axis=0))
-	    Gain_lim = []
-	    TempG_avg.append(ma.mean(TempG_lim,axis=0))
-	    TempG_lim = []
-	    diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
-	    diff_time_lim = []
-            diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
-            diff_volt_lim = []
-	    calset=0
-
-	print 'Final Number of Averaged Datasets is:',len(diff_time_avg)
-
-	savetxt('/home/tcv/'+caldir+day_dir+'Real_In_avg_take4.txt',real(In_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Imag_In_avg_take4.txt',imag(In_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Real_Vn_avg_take4.txt',real(Vn_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Imag_Vn_avg_take4.txt',imag(Vn_avg),delimiter = ' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Real_Gain_avg_take4.txt',real(Gain_avg),delimiter =' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Imag_Gain_avg_take4.txt',imag(Gain_avg),delimiter =' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'TempGain_avg_take4.txt',TempG_avg,delimiter=' ')
-	savetxt('/home/tcv/'+caldir+day_dir+'Cal_time.txt',diff_time_avg,delimiter=' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Tu_data.txt',Tu_sort,delimiter = ' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Tc_data.txt',Tc_sort,delimiter = ' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Ts_data.txt',Ts_sort,delimiter = ' ')
+	savetxt('/home/tcv/'+caldir+day_dir+'Cal_time.txt',diff_time_sort,delimiter=' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'Cal_freq.txt',new_freq,delimiter=' ')
-        savetxt('/home/tcv/'+caldir+day_dir+'Cal_volt.txt',diff_volt_avg,delimiter=' ')
+        savetxt('/home/tcv/'+caldir+day_dir+'Cal_volt.txt',diff_volt_sort,delimiter=' ')

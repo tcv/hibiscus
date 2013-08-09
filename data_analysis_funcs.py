@@ -43,12 +43,15 @@ def loadsingle(fname):
         freq_data = [0.0,]
 
     volt = 0.0
+    Tamb=300.
     f = open(fname)
     for i in range(0,20):
         test = f.readline()
 #        print test.split(' ')
         if test.split(' ')[-1]=='V\n':
-            volt = test.split(' ')[2]
+            volt = float(test.split(' ')[2])
+        elif test.split(' ')[-1]=='celsius\n':
+            Tamb = float(test.split(' ')[2])+273.15
 
 #    test = f.readlines(1)
 #    for line in range(0,len(test)):
@@ -56,7 +59,7 @@ def loadsingle(fname):
 #            lim = test[line].split('\t')[1]
 #            volt = float(lim.split('\n')[0])
 
-    return time,form,file_data,mask_data,freq_data,volt
+    return time,form,file_data,mask_data,freq_data,volt,Tamb
 
 def imped(ant_data,cable_len):
     """
@@ -340,13 +343,21 @@ def rebin(data,masked,freq,binscale):
         for f in range(0, len(new_data)-1):
             test_data = ma.array(data[f*binscale:(f+1)*binscale],mask=masked[f*binscale:(f+1)*binscale])
             test_data_con = ma.compressed(test_data)
-            new_data[f] = ma.mean(test_data_con)
+            if len(test_data_con)>=1:
+                new_data[f] = ma.min(test_data_con)
+            else: 
+                new_data[f] = 0.0
+#            new_data[f] = ma.mean(test_data_con)
             if sum(masked[f*binscale:(f+1)*binscale])>=binscale/2.:
                 new_mask[f] = 1.0
             new_freq[f] = ma.mean(freq[f*binscale:(f+1)*binscale])
         test_data = ma.array(data[(f+1)*binscale:-1],mask=masked[(f+1)*binscale:-1])
         test_data_con = ma.compressed(test_data) 
-        new_data[-1] = ma.mean(test_data_con)
+        if len(test_data_con)>=1:
+            new_data[-1] = ma.min(test_data_con)
+        else: 
+            new_data[-1] = 0.0
+#       new_data[-1] = ma.mean(test_data_con)
         if sum(masked[(f+1)*binscale:-1])>=1.:
             new_mask[-1] = 1.0
         new_freq[-1] = ma.mean(freq[(f+1)*binscale:-1])
@@ -428,7 +439,7 @@ def waterfallplot(data, Tscale, time, freq, name,filename):
     return
 
 
-def noise_calc(load,short,term,noise,Zamp,freq):
+def noise_calc(load,short,term,noise,Zamp,freq,Tamb):
     """
     Calculates the Vn and In for a given 50 Ohm, 100 Ohm, Noise and Short dataset.
     Assumes 50 Ohm, 100 Ohm, Noise and short are in dB, freq is in MHz
@@ -469,7 +480,7 @@ def noise_calc(load,short,term,noise,Zamp,freq):
 #    Pnoise = abs((Zamp+Z50)*Vnoise/Zamp)**2
 #    Pns = (Pnoise-P50)
     Pns = abs(Vns*Gain)**2/(2*Z50)
-    Tns = 300.*(Pns)/(P50)
+    Tns = float(Tamb)*(Pns)/(P50)
     gtemp = Tns/Pns
 
     return Vn,In,Gain,gtemp
@@ -490,4 +501,59 @@ def noise_corr(data,Vn,In,freq,Zamp,Zant,Gain,Temp):
     Tsky = Temp*Psky
 
     return Tsky
+
+def rb_noise_calc(load,short,term,noise,Z_amp,freq):
+    """
+    Uses the rodgers and bowman version of calibration procedure.
+    R&B model has a long cable instead of 100 Ohm data/Short data, but the principle is the same.
+    """
+    
+    def T100(xdata,Tu,Tc,Ts):
+        freq = xdata[0]
+        Z_amp = xdata[1]
+        Z50 = 50.*ones(len(freq))
+        Z100 = 100.*exp(2*pi*array(freq)*400*1e-6*1j) #Time delay of 400 ps measured using VNA
+        gamma_amp = (Z_amp-Z50)/(Z_amp+Z50)
+        gamma_100 = (Z100-Z50)/(Z100+Z50)
+        G = real(1-gamma_amp*conj(gamma_amp))
+        F100 = sqrt(1-gamma_amp*conj(gamma_amp))/(1-gamma_amp*gamma_100)
+        phi100 = angle(gamma_100*F100)
+        Tu = absolute(Tu)
+        Ts = absolute(Ts)
+        Tc = absolute(Tc)
+        Tamb = 300. # Using default room temperature of 300 K for now.
+        T100 =  Tamb*(1-absolute(gamma_100)**2)*absolute(F100)**2/G+Tu*absolute(gamma_100)**2*absolute(F100)**2/G +(Tc*cos(phi100)+Ts*sin(phi100))*absolute(gamma_100)*absolute(F100)/G 
+        return T100
+     
+    P50 = 10**(load/10.)
+    Pnoise = 10**(noise/10.)
+    P100 = 10**(term/10.)
+    Psh = 10**(short/10.)
+    T100_meas = (P100-Psh)/(Pnoise-P50)
+    Tu = []
+    Ts = []
+    Tc = []
+    int_freq = []
+    min_freq = int(min(freq))
+    max_freq = int(max(freq))
+#    print min_freq
+    for i in range(min_freq,max_freq+1):
+        freq_ind = []
+        for j in range(0,len(freq)):
+            if int(freq[j])==i:
+                freq_ind.append(j)
+#        print freq_ind
+        freq_data = freq[freq_ind]
+        Zamp_data = Z_amp[freq_ind]
+        xdata = [freq_data,Zamp_data]
+        T0 = [1e-4,1e-4,1e-4]
+        T100_mlim = T100_meas[freq_ind]
+#        print shape(freq_data),shape(xdata),shape(T100_mlim)
+        T,T_cov = optimize.curve_fit(T100,xdata,T100_mlim,T0,maxfev=1000000)
+        Tu.append(T[0])
+        Tc.append(T[1])
+        Ts.append(T[2])
+        int_freq.append(float(i))
+    return Tu,Ts,Tc,int_freq  
+
 

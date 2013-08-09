@@ -24,6 +24,9 @@ InR = []
 InX = []
 VnR = []
 VnX = []
+Volt = []
+Tamb = []
+
 for i in range(1,15):
     date = str(i)
     if i<10:
@@ -39,6 +42,8 @@ for i in range(1,15):
     lim_VnR=loadtxt(cal_dir+date_name+'Real_Vn_avg_take4.txt')
     lim_VnX=loadtxt(cal_dir+date_name+'Imag_Vn_avg_take4.txt')
     new_freq = loadtxt(cal_dir+date_name+'Cal_freq.txt')
+    lim_Volt = loadtxt(cal_dir+date_name+'Cal_volt.txt')
+    lim_Tamb = loadtxt(cal_dir+date_name+'Cal_temp.txt')
     if len(lim_Temp_gain)<500:
 	for i in range(0,len(lim_Cal_time)):
 	    diff_time.append(lim_Cal_time[i])
@@ -49,6 +54,8 @@ for i in range(1,15):
             InX.append(lim_InX[i])
             VnR.append(lim_VnR[i])
             VnX.append(lim_VnX[i])
+            Volt.append(lim_Volt[i])
+            Tamb.append(lim_Tamb[i])
     else: 
 #        for i in range(0,len(lim_Cal_time)):
         diff_time.append(lim_Cal_time)
@@ -59,6 +66,8 @@ for i in range(1,15):
         InX.append(lim_InX)
         VnR.append(lim_VnR)
         VnX.append(lim_VnX)
+        Volt.append(lim_Volt)
+        Tamb.append(lim_Tamb)
 
 
 diff_time = array(diff_time)
@@ -69,6 +78,8 @@ InR = array(InR)
 InX = array(InX)
 VnR = array(VnR)
 VnX = array(VnX)
+Volt = array(Volt)
+Tamb = array(Tamb)
 
 single_GR = GainR[:,4000]
 median_GR = ma.median(real(single_GR))
@@ -154,6 +165,14 @@ pylab.title('Imaginary In Data Variation over time')
 pylab.savefig('/home/tcv/'+caldir+'Full_Imag_In_waterfall_take4',dpi=300)
 pylab.clf()
 
+
+pylab.scatter(diff_time,Volt,c='b',edgecolor='b',s=3)
+#pylab.xlabel('Time (Hours since Midnight GMT June01)')
+pylab.ylabel('Voltage (V)')
+pylab.title('System Voltage for Calibrator Files')
+pylab.savefig('/home/tcv/'+caldir+'Full_Voltage_take4',dpi=300)
+pylab.clf()
+
 print 'Number of calibration files:',len(Temp_gain)
 single_TG = Temp_gain[:,4000]
 median_TG = ma.median(single_TG)
@@ -168,42 +187,90 @@ for i in range(0,len(single_TG)):
 
 print 'Good Files:',len(good_ind),'Total_Files:',len(single_TG)
 
-#diff_time_sm = diff_time[good_ind]
-#Temp_gain_sm = []
-#GainR_sm = []
-#GainX_sm = []
-#InR_sm = []
-#InX_sm = []
-#VnR_sm = []
-#VnX_sm = []
-#funct = lambda p,x: p[0]*x+p[1]
-#err = lambda p,x,y: funct(p,x)-y
-#pG=[1e19,1e18]
-#pE = [1e-7,1e-8]
-#for i in range(0,len(Temp_gain[0])):
-#    TG = itp.UnivariateSpline(diff_time[good_ind],Temp_gain[good_ind,i],s=0)
-#    Temp_gain_sm.append(TG)
-#    GR = itp.UnivariateSpline(diff_time[good_ind],GainR[good_ind,i],s=0)
-#    GainR_sm.append(GR)
-#    GX = itp.UnivariateSpline(diff_time[good_ind],GainX[good_ind,i],s=0)
-#    GainX_sm.append(GX)
-#    VR = itp.UnivariateSpline(diff_time[good_ind],VnR[good_ind,i],s=0)
-#    VnR_sm.append(VR)
-#    VX = itp.UnivariateSpline(diff_time[good_ind],VnX[good_ind,i],s=0)
-#    VnX_sm.append(VX)
-#    IR = itp.UnivariateSpline(diff_time[good_ind],InR[good_ind,i],s=0)
-#    InR_sm.append(IR)
-#    IX = itp.UnivariateSpline(diff_time[good_ind],InX[good_ind,i],s=0)
-#    InX_sm.append(IX)
+sub_TG = []
+sub_GR = []
+sub_GX = []
+sub_VR = []
+sub_VX = []
+sub_IR = []
+sub_IX = []
+sub_temp = []
+sub_volt = []
+sub_time = []
+lim_TG = [] 
+lim_GR = [] 
+lim_GX = [] 
+lim_VR = [] 
+lim_VX = [] 
+lim_IR = [] 
+lim_IX = [] 
+lim_temp = [] 
+lim_volt = [] 
+lim_time = [] 
 
-#print 'Shape of Smoothed Cal Data:',shape(InR_sm)
-#print Temp_gain_sm[1000]
-ant_time = arange(diff_time[0]-1,diff_time[-1]+1,0.01)
-pylab.scatter(diff_time[good_ind],Temp_gain[good_ind,1000])
+lim_TG.append(Temp_gain[0])
+lim_GR.append(GainR[0])
+lim_GX.append(GainX[0])
+lim_VR.append(VnR[0])
+lim_VX.append(VnX[0])
+lim_IR.append(InR[0])
+lim_IX.append(InX[0])
+lim_time.append(diff_time[0])
+lim_volt.append(Volt[0])
+lim_temp.append(Tamb[0])
+for i in range(1,len(Tamb)):
+    if (Volt[i]-Volt[i-1])>0.05:
+        sub_TG.append(ma.mean(lim_TG,axis=0))
+        sub_GR.append(ma.mean(lim_GR,axis=0))
+        sub_GX.append(ma.mean(lim_GX,axis=0))
+        sub_VR.append(ma.mean(lim_VR,axis=0))
+        sub_VX.append(ma.mean(lim_VX,axis=0))
+        sub_IR.append(ma.mean(lim_IR,axis=0))
+        sub_IX.append(ma.mean(lim_IX,axis=0))
+        sub_temp.append(ma.mean(lim_temp,axis=0))
+        sub_volt.append(ma.mean(lim_volt,axis=0))
+        sub_time.append(lim_time[-1])
+        lim_TG = []
+        lim_GR = []
+        lim_GX = []
+        lim_VR = []
+        lim_VX = []
+        lim_IR = []
+        lim_IX = []
+        lim_temp = []
+        lim_volt = []
+        lim_time = []
+    lim_TG.append(Temp_gain[i])
+    lim_GR.append(GainR[i])
+    lim_GX.append(GainX[i])
+    lim_VR.append(VnR[i])
+    lim_VX.append(VnX[i])
+    lim_IR.append(InR[i])
+    lim_IX.append(InX[i])
+    lim_time.append(diff_time[i])
+    lim_volt.append(Volt[i])
+    lim_temp.append(Tamb[i])
+
+print shape(sub_time)
+savetxt(cal_dir+'Real_In_subavg_take4.txt',sub_IR,delimiter = ' ')
+savetxt(cal_dir+'Imag_In_subavg_take4.txt',sub_IX,delimiter = ' ')
+savetxt(cal_dir+'Real_Vn_subavg_take4.txt',sub_VR,delimiter = ' ')
+savetxt(cal_dir+'Imag_Vn_subavg_take4.txt',sub_VX,delimiter = ' ')
+savetxt(cal_dir+'Real_Gain_subavg_take4.txt',sub_GR,delimiter =' ')
+savetxt(cal_dir+'Imag_Gain_subavg_take4.txt',sub_GX,delimiter =' ')
+savetxt(cal_dir+'TempGain_subavg_take4.txt',sub_TG,delimiter=' ')
+savetxt(cal_dir+'Cal_time_subavg_take4.txt',sub_time,delimiter=' ')
+savetxt(cal_dir+'Cal_freq_subavg_take4.txt',new_freq,delimiter=' ')
+savetxt(cal_dir+'Cal_volt_subavg_take4.txt',sub_volt,delimiter=' ')
+savetxt(cal_dir+'Cal_temp_subavg_take4.txt',sub_temp,delimiter=' ')
+
+
+#ant_time = arange(diff_time[0]-1,diff_time[-1]+1,0.01)
+#pylab.scatter(diff_time[good_ind],Temp_gain[good_ind,1000])
 #pylab.scatter(ant_time,Temp_gain_sm[1000](ant_time))
 #pylab.ylim(0,2e18)
-pylab.savefig(cal_dir+'overall_cal_temp_take4',dpi=300)
-pylab.clf()
+#pylab.savefig(cal_dir+'overall_cal_temp_take4',dpi=300)
+#pylab.clf()
 
 mean_TG = ma.mean(Temp_gain[good_ind,:],axis=0)
 mean_GR = ma.mean(GainR[good_ind,:],axis=0)
@@ -236,3 +303,5 @@ savetxt(cal_dir+'Imag_Gain_avg_take4.txt',mean_GX,delimiter =' ')
 savetxt(cal_dir+'TempGain_avg_take4.txt',mean_TG,delimiter=' ')
 savetxt(cal_dir+'Cal_time_take4.txt',diff_time,delimiter=' ')
 savetxt(cal_dir+'Cal_freq_take4.txt',new_freq,delimiter=' ')
+savetxt(cal_dir+'Cal_volt_take4.txt',Volt,delimiter=' ')
+savetxt(cal_dir+'Cal_temp_take4.txt',Tamb,delimiter=' ')

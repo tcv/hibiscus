@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 cal_dir = '/home/tcv/lustre/cal_data/'
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/June15/'
 data_dir = '/home/tcv/lustre/data_arrays/'
-out_dir = '/home/tcv/lustre/processed_data_min/'
+out_dir = '/home/tcv/lustre/processed_data_subavg/'
 #out_dir = '/home/tcv/lustre/processed_data/'
 
 ##### Load Files
@@ -33,15 +33,18 @@ ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
 #amp_s_file = 'Isla_Guadalupe_data_jun_2013/WEA101_AMP_2013-04-04.s2p'
 amp_s_file = '/home/tcv/guad_extras/WEA101_AMP_2013-04-04.s2p'
 
-diff_time = loadtxt(cal_dir+'Cal_time_take4.txt')
-Temp_gain = loadtxt(cal_dir+'TempGain_fit_take4.txt')
-GainR = loadtxt(cal_dir+'Real_Gain_fit_take4.txt')
-GainX = loadtxt(cal_dir+'Imag_Gain_fit_take4.txt')
-InR = loadtxt(cal_dir+'Real_In_fit_take4.txt')
-InX = loadtxt(cal_dir+'Imag_In_fit_take4.txt')
-VnR = loadtxt(cal_dir+'Real_Vn_fit_take4.txt')
-VnX = loadtxt(cal_dir+'Imag_Vn_fit_take4.txt')
-new_freq = loadtxt(cal_dir+'Cal_freq_take4.txt')
+diff_time = loadtxt(cal_dir+'Cal_time_subavg_take4.txt')
+Temp_gain = loadtxt(cal_dir+'TempGain_subavg_take4.txt')
+GainR = loadtxt(cal_dir+'Real_Gain_subavg_take4.txt')
+GainX = loadtxt(cal_dir+'Imag_Gain_subavg_take4.txt')
+InR = loadtxt(cal_dir+'Real_In_subavg_take4.txt')
+InX = loadtxt(cal_dir+'Imag_In_subavg_take4.txt')
+VnR = loadtxt(cal_dir+'Real_Vn_subavg_take4.txt')
+VnX = loadtxt(cal_dir+'Imag_Vn_subavg_take4.txt')
+new_freq = loadtxt(cal_dir+'Cal_freq_subavg_take4.txt')
+cal_volt = loadtxt(cal_dir+'Cal_volt_subavg_take4.txt')
+cal_temp = loadtxt(cal_dir+'Cal_temp_subavg_take4.txt')
+print diff_time
 
 ##### Efficiencey Correction Prep
 R_ant,X_ant,F_ant = fc.imped_skrf(ant_s11_file,0.0)
@@ -118,15 +121,22 @@ for s in range(0,len(selected_ind)):
 #        data_eff_cal_db = rebin_ant
 
 
-##### Gain Calibration
+##### Gain Calibration 
         ant_eff_noise_corr = []
         for i in range(0,len(data_eff_cal_db)):
             Tsky = zeros(len(data_eff_cal_db[0]))
+            cal_ind = 0
+            print ant_time[i]
+            for k in range(0,len(diff_time)):
+                if (ant_time[i]-diff_time[k])>0.1:
+                    cal_ind = k
+#                    print diff_time
+            print cal_ind
             for j in range(0,len(data_eff_cal_db[0])):
-               TGain_s = Temp_gain[j]
-               Vn_s = VnR[j]+1j*VnX[j]
-               In_s = InR[j]+1j*InX[j]
-               Gain_s = GainR[j]+1j*GainX[j]
+               TGain_s = Temp_gain[cal_ind,j]
+               Vn_s = VnR[cal_ind,j]+1j*VnX[cal_ind,j]
+               In_s = InR[cal_ind,j]+1j*InX[cal_ind,j]
+               Gain_s = GainR[cal_ind,j]+1j*GainX[cal_ind,j]
                Tsky[j] = fc.noise_corr(data_eff_cal_db[i,j],Vn_s,In_s,new_freq[j],Z_amp[j],
                                     Z_ant[j],Gain_s,TGain_s)
 #               Tsky[j] = TGain_s*Psky
@@ -300,11 +310,11 @@ full_rebin_time = array(full_rebin_time)
 full_rebin_freq = array(full_rebin_freq)
 full_rebin_volt = array(full_rebin_volt)
 full_rebin_temp = array(full_rebin_temp)
-savetxt(out_dir+date+'_processed_data_avgcal.txt',full_rebin_ant,delimiter = ' ')
-savetxt(out_dir+date+'_processed_time_avgcal.txt',full_rebin_time,delimiter = ' ')
-savetxt(out_dir+date+'_processed_freq_avgcal.txt',full_rebin_freq,delimiter = ' ')
-savetxt(out_dir+date+'_processed_volt_avgcal.txt',full_rebin_volt,delimiter = ' ')
-savetxt(out_dir+date+'_processed_temp_avgcal.txt',full_rebin_temp,delimiter = ' ')
+savetxt(out_dir+date+'_processed_data_subavgcal.txt',full_rebin_ant,delimiter = ' ')
+savetxt(out_dir+date+'_processed_time_subavgcal.txt',full_rebin_time,delimiter = ' ')
+savetxt(out_dir+date+'_processed_freq_subavgcal.txt',full_rebin_freq,delimiter = ' ')
+savetxt(out_dir+date+'_processed_volt_subavgcal.txt',full_rebin_volt,delimiter = ' ')
+savetxt(out_dir+date+'_processed_temp_subavgcal.txt',full_rebin_temp,delimiter = ' ')
 full_rebin_ant = []
 full_rebin_time = []
 full_rebin_freq = []
