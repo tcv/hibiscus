@@ -18,7 +18,7 @@ import skrf as rf
 import ephem as eph
 
 #Initial Settings:
-gsm = False #If want to do GSM model comparison
+gsm = True #If want to do GSM model comparison
 svd = False #If want to do SVD calculations
 full = True #If want to expand waterfall to fill in gaps
 stack = False #If want to stack data by sidereal time
@@ -27,8 +27,8 @@ eff = False #If want to play with efficiency and time delay to uneff data
 
 #Read in processed data
 #data_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/'
-data_dir = '/home/tcv/lustre/processed_data_min/'
-result_dir = '/home/tcv/lustre/data_plots_min/'
+data_dir = '/home/tcv/lustre/processed_data_subavg/'
+result_dir = '/home/tcv/lustre/data_plots_subavg/'
 gsm_raw_data = loadtxt('/home/tcv/guad_extras/gsm_guadalupe.dat')
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
 amp_s_file = '/home/tcv/guad_extras/WEA101_AMP_2013-04-04.s2p'
@@ -39,6 +39,7 @@ processed_data = []
 processed_time = []
 processed_freq = []
 processed_volt = []
+#dates = ['01','03','04','05']
 dates = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14']
 date_files = []
 day_ends = []
@@ -55,18 +56,18 @@ if gsm:
 for i in range(0,len(dates)):
     curr_date = 'June'+dates[i]
     print 'Date being processed is:',curr_date
-    single_data = loadtxt(data_dir+curr_date+'_processed_data_avgcal.txt')
+    single_data = loadtxt(data_dir+curr_date+'_processed_data_subavgcal.txt')
     single_data = array(single_data)
     for k in range(0,len(single_data)):
 	processed_data.append(single_data[k])
-    single_time = loadtxt(data_dir+curr_date+'_processed_time_avgcal.txt')
+    single_time = loadtxt(data_dir+curr_date+'_processed_time_subavgcal.txt')
     for j in range(0,len(single_time)):
         processed_time.append(single_time[j])
-    single_volt = loadtxt(data_dir+curr_date+'_processed_volt_avgcal.txt')
+    single_volt = loadtxt(data_dir+curr_date+'_processed_volt_subavgcal.txt')
     for l in range(0,len(single_volt)):
         processed_volt.append(single_volt[l])
     if len(processed_freq)<1:
-        processed_freq = loadtxt(data_dir+curr_date+'_processed_freq_avgcal.txt')
+        processed_freq = loadtxt(data_dir+curr_date+'_processed_freq_subavgcal.txt')
     print 'Current Size of Processed Data is:',shape(processed_data)    
     day_ends.append(len(processed_data))
 	    
@@ -363,7 +364,7 @@ pylab.ylabel('Temperature (Kelvin)')
 pylab.title('Single Frequency (%0.1f MHz) Time Variation' %processed_freq[120])
 pylab.grid()
 pylab.xlim(processed_time[0],processed_time[-1])
-pylab.ylim(0,5e3)
+pylab.ylim(0,7e3)
 pylab.savefig(result_dir+'single_freq_time_var_avgcal',dpi=300)
 pylab.clf()
 

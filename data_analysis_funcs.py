@@ -343,21 +343,21 @@ def rebin(data,masked,freq,binscale):
         for f in range(0, len(new_data)-1):
             test_data = ma.array(data[f*binscale:(f+1)*binscale],mask=masked[f*binscale:(f+1)*binscale])
             test_data_con = ma.compressed(test_data)
-            if len(test_data_con)>=1:
-                new_data[f] = ma.min(test_data_con)
-            else: 
-                new_data[f] = 0.0
-#            new_data[f] = ma.mean(test_data_con)
+#            if len(test_data_con)>=1:
+#                new_data[f] = ma.min(test_data_con)
+#            else: 
+#                new_data[f] = 0.0
+            new_data[f] = ma.mean(test_data_con)
             if sum(masked[f*binscale:(f+1)*binscale])>=binscale/2.:
                 new_mask[f] = 1.0
             new_freq[f] = ma.mean(freq[f*binscale:(f+1)*binscale])
         test_data = ma.array(data[(f+1)*binscale:-1],mask=masked[(f+1)*binscale:-1])
         test_data_con = ma.compressed(test_data) 
-        if len(test_data_con)>=1:
-            new_data[-1] = ma.min(test_data_con)
-        else: 
-            new_data[-1] = 0.0
-#       new_data[-1] = ma.mean(test_data_con)
+#        if len(test_data_con)>=1:
+#            new_data[-1] = ma.min(test_data_con)
+#        else: 
+#            new_data[-1] = 0.0
+        new_data[-1] = ma.mean(test_data_con)
         if sum(masked[(f+1)*binscale:-1])>=1.:
             new_mask[-1] = 1.0
         new_freq[-1] = ma.mean(freq[(f+1)*binscale:-1])

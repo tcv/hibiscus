@@ -219,7 +219,7 @@ lim_time.append(diff_time[0])
 lim_volt.append(Volt[0])
 lim_temp.append(Tamb[0])
 for i in range(1,len(Tamb)):
-    if (Volt[i]-Volt[i-1])>0.05:
+    if (Volt[i]-Volt[i-1])>0.1:
         sub_TG.append(ma.mean(lim_TG,axis=0))
         sub_GR.append(ma.mean(lim_GR,axis=0))
         sub_GX.append(ma.mean(lim_GX,axis=0))
