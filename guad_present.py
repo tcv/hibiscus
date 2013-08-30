@@ -18,7 +18,7 @@ import skrf as rf
 import ephem as eph
 
 #Initial Settings:
-gsm = True #If want to do GSM model comparison
+gsm = False #If want to do GSM model comparison
 svd = False #If want to do SVD calculations
 full = True #If want to expand waterfall to fill in gaps
 stack = False #If want to stack data by sidereal time
@@ -39,8 +39,8 @@ processed_data = []
 processed_time = []
 processed_freq = []
 processed_volt = []
-#dates = ['01','03','04','05']
-dates = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14']
+dates = ['01','02','03','04','05']
+#dates = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14']
 date_files = []
 day_ends = []
 day_ends.append(0)
@@ -111,9 +111,17 @@ for i in range(0,len(prelim_mask)):
     for j in range(0,len(prelim_mask[0])):
 	if spike_mask[j] == 1.0:
 	    prelim_mask[i,j] = 1.0
-	    processed_data[i,j] = 0.0
+            processed_data[i,j] = ma.mean(processed_data[i,j-5:j+5])
         if processed_data[i,j]==0.0:
             prelim_mask[i,j] = 1.0
+            processed_data[i,j] = ma.mean(processed_data[i,j-5:j+5])
+for i in range(0,len(prelim_mask[0])):
+    spike_mask = fc.spike_flag(processed_data[:,i],100)
+    for j in range(0,len(prelim_mask)):
+        if spike_mask[j]==1.0:
+            prelim_mask[j,i] = 1.0
+            processed_data[j,i] = ma.mean(processed_data[j-5:j+5,i])
+            
 
 #Base level Mean Data
 mean_data = []
@@ -178,12 +186,15 @@ print 'Daily Mean Shape is:', shape(day_means)
 day_means = array(day_means)
 
 #Base Level power law fit
-fitfunc = lambda x,p0,p1,p2: p0*x**(-p1)+p2
+fitfunc = lambda x,p0,p1,p2,p3,p4,p5: p0*x**(p1)+p2*x**(p3)+p4*x**(p5)
 #rrfunc = lambda p,x,y: fitfunc(p,x)-y
-pinit = [1e7,2.5,1e2]
-p,success = opt.curve_fit(fitfunc,processed_freq,mean_data,pinit[:],ones(len(mean_data)))
+pinit = [1e5,-2.5,1e5,-1.,1e5,1.]
+p,success = opt.curve_fit(fitfunc,processed_freq,mean_data,pinit[:],ones(len(mean_data)),maxfev=1000000)
+pinit = p
+p,success = opt.curve_fit(fitfunc,processed_freq,mean_data,pinit[:],ones(len(mean_data)),maxfev=1000000)
 #p,success = opt.leastsq(errfunc,p0,args=(processed_freq,mean_data))
-p1,success1 = opt.curve_fit(fitfunc,processed_freq[data_lim_ind[0]:data_lim_ind[1]],mean_data[data_lim_ind[0]:data_lim_ind[1]],pinit[:],ones(len(mean_data[data_lim_ind[0]:data_lim_ind[1]])),maxfev=100000)
+p1,success1 = opt.curve_fit(fitfunc,processed_freq[data_lim_ind[0]:data_lim_ind[1]],mean_data[data_lim_ind[0]:data_lim_ind[1]],pinit[:],ones(len(mean_data[data_lim_ind[0]:data_lim_ind[1]])),maxfev=10000000)
+pinit = p1
 #p1,success1 = opt.leastsq(errfunc,p0,args=(processed_freq[data_lim_ind[0]:data_lim_ind[1]],mean_data[data_lim_ind[0]:data_lim_ind[1]]))
 fitfunc2 = lambda x,q0,q1: q0*x**(-2.5)+q1
 #errfunc2 = lambda q,a,b: fitfunc2(q,a)-b
@@ -386,16 +397,16 @@ pylab.grid()
 pylab.xlim(40,140)
 pylab.ylim(0,2e4)
 pylab.savefig(result_dir+'mean_freq_spectrum_avgcal',dpi=300)
-pylab.plot(processed_freq,fitfunc(processed_freq,p[0],p[1],p[2]),c='g',label='Power Law fit (40-140 MHz)')
-pylab.plot(processed_freq,fitfunc(processed_freq,p1[0],p1[1],p1[2]),c='r',label='Power Law fit (%0.1f-%0.1f MHz)' %(data_lim[0],data_lim[1]))
+pylab.plot(processed_freq,fitfunc(processed_freq,p[0],p[1],p[2],p[3],p[4],p[5]),c='g',label='Power Law fit (40-140 MHz)')
+pylab.plot(processed_freq,fitfunc(processed_freq,p1[0],p1[1],p1[2],p1[3],p1[4],p1[5]),c='r',label='Power Law fit (%0.1f-%0.1f MHz)' %(data_lim[0],data_lim[1]))
 pylab.plot(processed_freq,fitfunc2(processed_freq,q[0],q[1]),c='c',label='-2.5 Power Law fit (40-140 MHz)')
 pylab.plot(processed_freq,fitfunc2(processed_freq,q1[0],q1[1]),c='m',label='-2.5 Power Law fit (%0.1f-%0.1f MHz)' %(data_lim[0],data_lim[1]))
 pylab.legend()
 pylab.title('Mean Data Spectrum with Power Law Fits')
-pylab.savefig(result_dir+'mean_freq_spectrum_avgcal_fit',dpi=300) 
+pylab.savefig(result_dir+'mean_freq_spectrum_avgcal_fit3_jun1-5',dpi=300) 
 pylab.clf()
 
-pylab.scatter(processed_freq,mean_data-fitfunc(processed_freq,p1[0],p1[1],p1[2]),c='b',edgecolor='b',s=3,label='60-80 MHz Fit (-%0.1f power)' %p1[1])
+pylab.scatter(processed_freq,mean_data-fitfunc(processed_freq,p1[0],p1[1],p1[2],p1[3],p1[4],p1[5]),c='b',edgecolor='b',s=3,label='60-80 MHz Fit (-%0.1f power)' %p1[1])
 pylab.scatter(processed_freq,mean_data-fitfunc2(processed_freq,q1[0],q1[1]),c='g',edgecolor='g',s=3,label='60-80 MHz Fit (-2.5 power)')
 pylab.xlabel('Frequency (MHz')
 pylab.ylabel('Temperature (Kelvin)')
@@ -403,17 +414,17 @@ pylab.xlim(50,100)
 pylab.ylim(100,-100)
 pylab.grid()
 pylab.legend()
-pylab.savefig(result_dir+'mean_freq_spectrum_fit_resid',dpi=300)
+pylab.savefig(result_dir+'mean_freq_spectrum_fit3_resid_june1-5',dpi=300)
 pylab.clf()
 
 pylab.scatter(processed_freq,day_means[0],c='b',edgecolor='b',s=1,label='June01')
 pylab.scatter(processed_freq,day_means[2],c='g',edgecolor='g',s=1,label='June03')
 pylab.scatter(processed_freq,day_means[3],c='c',edgecolor='c',s=1,label='June04')
 pylab.scatter(processed_freq,day_means[4],c='r',edgecolor='r',s=1,label='June05')
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[0,0],day_params[0,1],day_params[0,2]),c='b',label='June01: -%0.2f Fit' %day_params[0,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[2,0],day_params[2,1],day_params[2,2]),c='g',label='June03: -%0.2f Fit' %day_params[2,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[3,0],day_params[3,1],day_params[3,2]),c='c',label='June04: -%0.2f Fit' %day_params[3,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[4,0],day_params[4,1],day_params[4,2]),c='r',label='June05: -%0.2f Fit' %day_params[4,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[0,0],day_params[0,1],day_params[0,2],day_params[0,3],day_params[0,4],day_params[0,5]),c='b',label='June01: -%0.2f Fit' %day_params[0,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[2,0],day_params[2,1],day_params[2,2],day_params[2,3],day_params[2,4],day_params[2,5]),c='g',label='June03: -%0.2f Fit' %day_params[2,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[3,0],day_params[3,1],day_params[3,2],day_params[3,3],day_params[3,4],day_params[3,5]),c='c',label='June04: -%0.2f Fit' %day_params[3,1])
+pylab.plot(processed_freq,fitfunc(processed_freq,day_params[4,0],day_params[4,1],day_params[4,2],day_params[4,3],day_params[4,4],day_params[4,5]),c='r',label='June05: -%0.2f Fit' %day_params[4,1])
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.title('Mean Daily Data Spectra and Fits')
@@ -421,47 +432,47 @@ pylab.grid()
 pylab.xlim(40,140)
 pylab.ylim(0,2e4)
 pylab.legend()
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit_pt1',dpi=300)
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit3_pt1',dpi=300)
 pylab.clf()
 
-pylab.scatter(processed_freq,day_means[5],c='y',edgecolor='y',s=1,label='June06')
-pylab.scatter(processed_freq,day_means[7],c='m',edgecolor='m',s=1,label='June08')
-pylab.scatter(processed_freq,day_means[8],c='k',edgecolor='k',s=1,label='June09')
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[5,0],day_params[5,1],day_params[5,2]),c='y',label='June06: -%0.2f Fit' %day_params[5,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[7,0],day_params[7,1],day_params[7,2]),c='m',label='June08: -%0.2f Fit' %day_params[7,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[8,0],day_params[8,1],day_params[8,2]),c='k',label='June09: -%0.2f Fit' %day_params[8,1])
-pylab.xlabel('Frequency (MHz)') 
-pylab.ylabel('Temperature (Kelvin)') 
-pylab.title('Mean Daily Data Spectra and Fits') 
-pylab.grid() 
-pylab.xlim(40,140) 
-pylab.ylim(0,2e4) 
-pylab.legend()
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit_pt2',dpi=300)
-pylab.clf()
+#pylab.scatter(processed_freq,day_means[5],c='y',edgecolor='y',s=1,label='June06')
+#pylab.scatter(processed_freq,day_means[7],c='m',edgecolor='m',s=1,label='June08')
+#pylab.scatter(processed_freq,day_means[8],c='k',edgecolor='k',s=1,label='June09')
+#pylab.plot(processed_freq,fitfunc(processed_freq,day_params[5,0],day_params[5,1],day_params[5,2],day_params[5,3],day_params[5,4]),c='y',label='June06: -%0.2f Fit' %day_params[5,1])
+#pylab.plot(processed_freq,fitfunc(processed_freq,day_params[7,0],day_params[7,1],day_params[7,2],day_params[7,3],day_params[7,4]),c='m',label='June08: -%0.2f Fit' %day_params[7,1])
+#pylab.plot(processed_freq,fitfunc(processed_freq,day_params[8,0],day_params[8,1],day_params[8,2],day_params[8,3],day_params[8,4]),c='k',label='June09: -%0.2f Fit' %day_params[8,1])
+#pylab.xlabel('Frequency (MHz)') 
+#pylab.ylabel('Temperature (Kelvin)') 
+#pylab.title('Mean Daily Data Spectra and Fits') 
+#pylab.grid() 
+#pylab.xlim(40,140) 
+#pylab.ylim(0,2e4) 
+#pylab.legend()
+#pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit2_pt2',dpi=300)
+#pylab.clf()
 
-pylab.scatter(processed_freq,day_means[10],c='b',edgecolor='b',s=1,label='June11')
-pylab.scatter(processed_freq,day_means[11],c='g',edgecolor='g',s=1,label='June12')
-pylab.scatter(processed_freq,day_means[12],c='c',edgecolor='c',s=1,label='June13')
-pylab.scatter(processed_freq,day_means[13],c='r',edgecolor='r',s=1,label='June14') 
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[10,0],day_params[10,1],day_params[10,2]),c='b',label='June11: -%0.2f Fit' %day_params[10,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[11,0],day_params[11,1],day_params[11,2]),c='g',label='June12: -%0.2f Fit' %day_params[11,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2]),c='c',label='June13: -%0.2f Fit' %day_params[12,1])
-pylab.plot(processed_freq,fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2]),c='r',label='June14: -%0.2f Fit' %day_params[13,1])
-pylab.xlabel('Frequency (MHz)')  
-pylab.ylabel('Temperature (Kelvin)')  
-pylab.title('Mean Daily Data Spectra and Fits')
-pylab.grid()  
-pylab.xlim(40,140)  
-pylab.ylim(0,2e4)  
-pylab.legend()
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit_pt3',dpi=300) 
-pylab.clf() 
+#pylab.scatter(processed_freq,day_means[10],c='b',edgecolor='b',s=1,label='June11')
+#pylab.scatter(processed_freq,day_means[11],c='g',edgecolor='g',s=1,label='June12')
+#pylab.scatter(processed_freq,day_means[12],c='c',edgecolor='c',s=1,label='June13')
+#pylab.scatter(processed_freq,day_means[13],c='r',edgecolor='r',s=1,label='June14') 
+#pylab.plot(processed_freq,fitfunc(processed_freq,day_params[10,0],day_params[10,1],day_params[10,2],day_params[10,3],day_params[10,4]),c='b',label='June11: -%0.2f Fit' %day_params[10,1])
+#pylab.plot(processed_freq,fitfunc(processed_freq,day_params[11,0],day_params[11,1],day_params[11,2],day_params[11,3],day_params[11,4]),c='g',label='June12: -%0.2f Fit' %day_params[11,1])
+#pylab.plot(processed_freq,fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2],day_params[12,3],day_params[12,4]),c='c',label='June13: -%0.2f Fit' %day_params[12,1])
+#pylab.plot(processed_freq,fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2],day_params[13,3],day_params[13,4]),c='r',label='June14: -%0.2f Fit' %day_params[13,1])
+#pylab.xlabel('Frequency (MHz)')  
+#pylab.ylabel('Temperature (Kelvin)')  
+#pylab.title('Mean Daily Data Spectra and Fits')
+#pylab.grid()  
+#pylab.xlim(40,140)  
+#pylab.ylim(0,2e4)  
+#pylab.legend()
+#pylab.savefig(result_dir+'mean_freq_spectrum_day_var_avgcal_fit2_pt3',dpi=300) 
+#pylab.clf() 
 
-pylab.scatter(processed_freq,day_means[0]-fitfunc(processed_freq,day_params[0,0],day_params[0,1],day_params[0,2]),c='b',edgecolor='b',s=1,label='June01: -%0.2f Fit' %day_params[0,1])
-pylab.scatter(processed_freq,day_means[2]-fitfunc(processed_freq,day_params[2,0],day_params[2,1],day_params[2,2]),c='g',edgecolor='g',s=1,label='June03: -%0.2f Fit' %day_params[2,1])
-pylab.scatter(processed_freq,day_means[3]-fitfunc(processed_freq,day_params[3,0],day_params[3,1],day_params[3,2]),c='c',edgecolor='c',s=1,label='June04: -%0.2f Fit' %day_params[3,1])
-pylab.scatter(processed_freq,day_means[4]-fitfunc(processed_freq,day_params[4,0],day_params[4,1],day_params[4,2]),c='r',edgecolor='r',s=1,label='June05: -%0.2f Fit' %day_params[4,1])
+pylab.scatter(processed_freq,day_means[0]-fitfunc(processed_freq,day_params[0,0],day_params[0,1],day_params[0,2],day_params[0,3],day_params[0,4],day_params[0,5]),c='b',edgecolor='b',s=1,label='June01: -%0.2f Fit' %day_params[0,1])
+pylab.scatter(processed_freq,day_means[2]-fitfunc(processed_freq,day_params[2,0],day_params[2,1],day_params[2,2],day_params[2,3],day_params[2,4],day_params[2,5]),c='g',edgecolor='g',s=1,label='June03: -%0.2f Fit' %day_params[2,1])
+pylab.scatter(processed_freq,day_means[3]-fitfunc(processed_freq,day_params[3,0],day_params[3,1],day_params[3,2],day_params[3,3],day_params[3,4],day_params[3,5]),c='c',edgecolor='c',s=1,label='June04: -%0.2f Fit' %day_params[3,1])
+pylab.scatter(processed_freq,day_means[4]-fitfunc(processed_freq,day_params[4,0],day_params[4,1],day_params[4,2],day_params[4,3],day_params[4,4],day_params[4,5]),c='r',edgecolor='r',s=1,label='June05: -%0.2f Fit' %day_params[4,1])
 pylab.xlabel('Frequency (MHz)') 
 pylab.ylabel('Temperature (Kelvin)') 
 pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)'%(data_lim[0],data_lim[1]))
@@ -469,35 +480,35 @@ pylab.grid()
 pylab.xlim(50,100)   
 pylab.ylim(-100,100)   
 pylab.legend()  
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit_resid',dpi=300)
+pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit3_resid_pt1',dpi=300)
 pylab.clf()  
 
-pylab.scatter(processed_freq,day_means[5]-fitfunc(processed_freq,day_params[5,0],day_params[5,1],day_params[5,2]),c='y',edgecolor='y',s=1,label='June06: -%0.2f Fit' %day_params[5,1])
-pylab.scatter(processed_freq,day_means[7]-fitfunc(processed_freq,day_params[7,0],day_params[7,1],day_params[7,2]),c='m',edgecolor='m',s=1,label='June08: -%0.2f Fit' %day_params[7,1])
-pylab.scatter(processed_freq,day_means[8]-fitfunc(processed_freq,day_params[8,0],day_params[8,1],day_params[8,2]),c='k',edgecolor='k',s=1,label='June09: -%0.2f Fit' %day_params[8,1])
-pylab.xlabel('Frequency (MHz)')
-pylab.ylabel('Temperature (Kelvin)')
-pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)'%(data_lim[0],data_lim[1]))
-pylab.grid()  
-pylab.xlim(50,100)  
-pylab.ylim(-100,100)  
-pylab.legend() 
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit_resid_pt2',dpi=300)
-pylab.clf() 
+#pylab.scatter(processed_freq,day_means[5]-fitfunc(processed_freq,day_params[5,0],day_params[5,1],day_params[5,2],day_params[5,3],day_params[5,4]),c='y',edgecolor='y',s=1,label='June06: -%0.2f Fit' %day_params[5,1])
+#pylab.scatter(processed_freq,day_means[7]-fitfunc(processed_freq,day_params[7,0],day_params[7,1],day_params[7,2],day_params[7,3],day_params[7,4]),c='m',edgecolor='m',s=1,label='June08: -%0.2f Fit' %day_params[7,1])
+#pylab.scatter(processed_freq,day_means[8]-fitfunc(processed_freq,day_params[8,0],day_params[8,1],day_params[8,2],day_params[8,3],day_params[8,4]),c='k',edgecolor='k',s=1,label='June09: -%0.2f Fit' %day_params[8,1])
+#pylab.xlabel('Frequency (MHz)')
+#pylab.ylabel('Temperature (Kelvin)')
+#pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)'%(data_lim[0],data_lim[1]))
+#pylab.grid()  
+#pylab.xlim(50,100)  
+#pylab.ylim(-100,100)  
+#pylab.legend() 
+#pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit2_resid_pt2',dpi=300)
+#pylab.clf() 
  
-pylab.scatter(processed_freq,day_means[10]-fitfunc(processed_freq,day_params[10,0],day_params[10,1],day_params[10,2]),c='b',edgecolor='b',s=1,label='June11: -%0.2f Fit' %day_params[10,1])
-pylab.scatter(processed_freq,day_means[11]-fitfunc(processed_freq,day_params[11,0],day_params[11,1],day_params[11,2]),c='g',edgecolor='g',s=1,label='June12: -%0.2f Fit' %day_params[11,1])
-pylab.scatter(processed_freq,day_means[12]-fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2]),c='c',edgecolor='c',s=1,label='June13: -%0.2f Fit')
-pylab.scatter(processed_freq,day_means[13]-fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2]),c='r',edgecolor='r',s=1,label='June14: -%0.2f Fit')
-pylab.xlabel('Frequency (MHz)')
-pylab.ylabel('Temperature (Kelvin)')
-pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)' %(data_lim[0],data_lim[1]))
-pylab.grid()   
-pylab.xlim(50,100)   
-pylab.ylim(-100,100)   
-pylab.legend() 
-pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit_resid_pt3',dpi=300)
-pylab.clf()  
+#pylab.scatter(processed_freq,day_means[10]-fitfunc(processed_freq,day_params[10,0],day_params[10,1],day_params[10,2],day_params[10,3],day_params[10,4]),c='b',edgecolor='b',s=1,label='June11: -%0.2f Fit' %day_params[10,1])
+#pylab.scatter(processed_freq,day_means[11]-fitfunc(processed_freq,day_params[11,0],day_params[11,1],day_params[11,2],day_params[11,3],day_params[11,4]),c='g',edgecolor='g',s=1,label='June12: -%0.2f Fit' %day_params[11,1])
+#pylab.scatter(processed_freq,day_means[12]-fitfunc(processed_freq,day_params[12,0],day_params[12,1],day_params[12,2],day_params[12,3],day_params[12,4]),c='c',edgecolor='c',s=1,label='June13: -%0.2f Fit' %day_params[12,1])
+#pylab.scatter(processed_freq,day_means[13]-fitfunc(processed_freq,day_params[13,0],day_params[13,1],day_params[13,2],day_params[13,3],day_params[13,4]),c='r',edgecolor='r',s=1,label='June14: -%0.2f Fit' %day_params[13,1])
+#pylab.xlabel('Frequency (MHz)')
+#pylab.ylabel('Temperature (Kelvin)')
+#pylab.title('Daily Mean Power Law Fit Residuals (Fit to %0.1f-%0.1fMHz)' %(data_lim[0],data_lim[1]))
+#pylab.grid()   
+#pylab.xlim(50,100)   
+#pylab.ylim(-100,100)   
+#pylab.legend() 
+#pylab.savefig(result_dir+'mean_freq_spectrum_day_var_fit2_resid_pt3',dpi=300)
+#pylab.clf()  
 
 pylab.scatter(sidereal_hour,processed_data[:,100],c='b',edgecolor='b',s=3)
 pylab.scatter(sidereal_hour,processed_data[:,125],c='g',edgecolor='g',s=3)
@@ -728,4 +739,136 @@ if stack:
         pylab.savefig(result_dir+'mean_freq_spectrum_stack_SVDrm_avgcal_'+str(int(data_lim[0]))+'-'+str(int(data_lim[1]))+'MHz',dpi=300) 
         pylab.clf()
 
+
+log_data = log10(processed_data)
+log_freq = log10(processed_freq)
+for i in range(0,len(log_data)):
+    infdata = where(isinf(log_data[i]))
+    infdata = array(infdata)
+    for j in range(0,len(infdata[0])):
+        index = infdata[0,j]
+        log_data[i,index] = 0.0
+        prelim_mask[i,index] = 1.0
+    nandata = where(isnan(log_data[i]))
+    nandata = array(nandata)
+    for k in range(0,len(nandata[0])):
+        index = nandata[0,k]
+        log_data[i,index] = 0.0
+        prelim_mask[i,index] = 1.0
+
+
+fitlin = lambda x,p0,p1: p0*x+p1
+pinit = [-2.5,11]
+fitlin2 = lambda x,p0,p1,p2: p2*x**2+p0*x+p1
+pinit2 = [-2.5,11,-0.5]
+fitlin3 = lambda x,p0,p1,p2,p3: p3*x**3+p2*x**2+p0*x+p1
+pinit3 = [-2.5,11,-0.5,0.5]
+
+
+pfits = []
+pfits2 = []
+pfits3 = []
+good_ind = []
+bad_ind = []
+for i in range(0,len(log_data)):
+#    single_time = ma.array(log_data[i],mask=prelim_mask[i])
+    single_time = ma.array(log_data[i],mask=subtract_extra_mask[i])
+    single_compress = ma.compressed(single_time)
+    bad = 0.0
+    if len(single_compress)<10:
+        bad = 1.0
+        bad_ind.append(i)
+    else:
+        good_ind.append(i)
+#    single_freq = ma.array(log_freq,mask = prelim_mask[i])
+    single_freq = ma.array(log_freq,mask=subtract_extra_mask[i])
+    compress_freq = ma.compressed(single_freq)
+    weights = ones(len(single_compress))
+    for j in range(0,len(single_compress)):
+        if single_compress[j]>0.0:
+            weights[j] = single_compress[j]
+#    off = where(single_compress<3)[0]
+#    off2 = where(single_compress>4)[0]
+#    print len(off),len(off2)
+#    for k in range(0,len(off2)):
+#        weights[off2[k]] = 1e7
+#    for j in range(0,len(off)):
+#        weights[off[j]] = 1e7
+#    single_lim_ind = [where(compress_freq<data_lim[0])[0][-1],where(compress_freq>data_lim[1])[0][0]]
+    if bad<1.0:
+        single_lim_ind = [where(compress_freq<log10(data_lim[0]))[0][-1],where(compress_freq>log10(data_lim[1]))[0][0]] 
+        ptest,suc  = opt.curve_fit(fitlin,compress_freq[single_lim_ind[0]:single_lim_ind[1]],single_compress[single_lim_ind[0]:single_lim_ind[1]],pinit[:],weights[single_lim_ind[0]:single_lim_ind[1]],maxfev=10000)
+        pfit2nd.append(ptest)
+        pfits.append(ptest)
+        ptest2,suc  = opt.curve_fit(fitlin2,compress_freq[single_lim_ind[0]:single_lim_ind[1]],single_compress[single_lim_ind[0]:single_lim_ind[1]],pinit2[:],weights[single_lim_ind[0]:single_lim_ind[1]],maxfev=10000)
+        pfits2.append(ptest2)
+        ptest3,suc  = opt.curve_fit(fitlin3,compress_freq[single_lim_ind[0]:single_lim_ind[1]],single_compress[single_lim_ind[0]:single_lim_ind[1]],pinit3[:],weights[single_lim_ind[0]:single_lim_ind[1]],maxfev=10000)
+        pfits3.append(ptest3) 
+
+
+pfits = array(pfits)
+pfits2 = array(pfits2)
+pfits3 = array(pfits3)
+
+subtract_data = []
+subtract2_data = []
+subtract3_data = []
+subtract_mask = []
+subtract_time = []
+for i in range(0,len(good_ind)):
+    single = 10**(log_data[good_ind[i]])-10**(fitlin(log_freq,pfits[i,0],pfits[i,1]))
+    subtract_data.append(single)
+    subtract_mask.append(prelim_mask[good_ind[i]])
+    subtract_time.append(processed_time[good_ind[i]])
+    single2 = 10**(log_data[good_ind[i]])-10**(fitlin2(log_freq,pfits2[i,0],pfits2[i,1],pfits2[i,2]))
+    subtract2_data.append(single2)
+    single3 = 10**(log_data[good_ind[i]])-10**(fitlin3(log_freq,pfits3[i,0],pfits3[i,1],pfits3[i,2],pfits3[i,3]))
+    subtract3_data.append(single3)
+
+
+subtract_data = array(subtract_data)
+subtract_mask = array(subtract_mask)
+subtract2_data = array(subtract2_data)
+subtract3_data = array(subtract3_data)
+
+subtract_extra_mask = zeros((len(subtract_mask),len(subtract_mask[0])))
+subtract_extra_mask2 = zeros((len(subtract_mask),len(subtract_mask[0]))) 
+subtract_extra_mask3 = zeros((len(subtract_mask),len(subtract_mask[0]))) 
+for i in range(0,len(subtract_extra_mask[0])):
+    spike_mask = fc.spike_flag(subtract_data[:,i],200)
+    spike_mask2 = fc.spike_flag(subtract2_data[:,i],200)
+    spike_mask3 = fc.spike_flag(subtract3_data[:,i],200)
+    for j in range(0,len(subtract_extra_mask)):
+#        if lin_subtract_data[i,j]>1:
+#            subtract_extra_mask[i,j]=1.0
+#        elif lin_subtract_data[i,j]<-1:
+#            subtract_extra_mask[i,j]=1.0
+        if spike_mask[j] == 1.0:
+            subtract_extra_mask[j,i] = 1.0
+        if spike_mask2[j] == 1.0:
+            subtract_extra_mask2[j,i] = 1.0
+        if spike_mask3[j] == 1.0:
+            subtract_extra_mask3[j,i] = 1.0
+        if subtract_mask[j,i] == 1.0:
+            subtract_extra_mask[j,i] = 1.0
+            subtract_extra_mask2[j,i] = 1.0
+            subtract_extra_mask3[j,i] = 1.0
+
+
+sub_mean_data2 = []
+sub_mean_data3 = []
+sub_mean_data = []
+for i in range(0,len(processed_freq)):
+    single_freq = ma.array(subtract_data[:,i],mask=subtract_extra_mask[:,i])
+    single_compress = ma.compressed(single_freq)
+    single_mean = ma.mean(single_compress)
+    sub_mean_data.append(single_mean)
+    single_freq2 = ma.array(subtract2_data[:,i],mask=subtract_extra_mask2[:,i])
+    single_compress2 = ma.compressed(single_freq2)
+    single_mean2 = ma.mean(single_compress2)
+    sub_mean_data2.append(single_mean2)
+    single_freq3 = ma.array(subtract3_data[:,i],mask=subtract_extra_mask3[:,i])
+    single_compress3 = ma.compressed(single_freq3) 
+    single_mean3 = ma.mean(single_compress3) 
+    sub_mean_data3.append(single_mean3) 
 
