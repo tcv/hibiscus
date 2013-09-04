@@ -452,16 +452,12 @@ def noise_calc(load,short,term,noise,Zamp,freq,Tamb):
 #    Vsh = sqrt(absolute(Zamp)*10**(short/10.))
 #    V50 = sqrt(absolute(Zamp)*10**(load/10.))
 #    V100 = sqrt(absolute(Zamp)*10**(term/10.))
-    VJF = sqrt(4*1.381e-23*300*Z50*(freq[1]-freq[0])*1e6)*ones(len(freq))
+    VJF = sqrt(4*1.381e-23*Tamb*Z50*(freq[1]-freq[0])*1e6)*ones(len(freq))
 #    VJO = sqrt(4*1.381e-23*300*absolute(Z100)*(freq[1]-freq[0])*1e6)*ones(len(freq))
     VJO = sqrt(2.)*VJF
     Gain = (Z100*(V50-Zamp*Vsh/(Zamp+Z50))*(Zamp+Z50)-Z50*(V100-Zamp*Vsh/(Zamp+Z100))*(Zamp+Z100))/(Zamp*VJF*(Z100-sqrt(2.)*Z50))
     In = (V50-Zamp*Vsh/(Zamp+Z50))*(Zamp+Z50)/(Gain*Zamp*Z50)-VJF/Z50 
-##    In = VJF*((Zamp+Z50)*sqrt(2.)*(V50-Vsh)/((Zamp+Z100)*(V100-Vsh))-1)/(Z50-Z100*(Zamp+Z50)*(V50-Vsh)/((Zamp+Z100)*(V100-Vsh)))
-##    Gain = (V50-Vsh)*(Zamp+Z50)/(Zamp*(VJF+In*Z50))
-#    Gain = ((Zamp+Z50)*Z100*V50+Zamp*(Z50-Z100)*Vsh-(Zamp+Z100)*V100*Z50)/(Zamp*(VJF*Z100-VJO*Z50))
     Vn = Vsh/Gain
-#    In = ((Zamp+Z50)*V50/(Zamp*Z50)-(Vsh+Gain*VJF)/Z50)/Gain
 #    Vnoise = sqrt(absolute(Zamp)*10**(noise/10.))
     Vnoise = sqrt(2*Z50*10**(noise/10.))
 ##    Vns = Vnoise/Gain - Zamp*(VJF+Vn)/(Zamp+Z50)-In*Zamp*Z50/(Zamp+Z50)
@@ -471,19 +467,18 @@ def noise_calc(load,short,term,noise,Zamp,freq,Tamb):
     Pnoise = abs(Vnoise)**2/(2*Z50)
     P50 = abs(Vm50*Gain)**2/(2*Z50)
     Psh = abs(Vn*Gain)**2/(2*Z50)
-#    P50 = absolute(V50**2/(Zamp*Gain**2))
-#    Vm50 = Zamp*(VJF+Vn)/(Zamp+Z50)+In*Zamp*Z50/(Zamp+Z50)
-#    Ve50 = V50/Gain
-#    Vns = sqrt((Vnoise/Gain)**2-(Vm50)**2)
 #    Tns = 300*(abs(Vnoise/Gain)**2-abs(Vm50)**2)/abs(Vm50)**2   
 #    Tns = 300*(abs(Vnoise)**2)*(Zamp+Z50)/Zamp/Gain/abs(Vm50)**2
-#    Pnoise = abs((Zamp+Z50)*Vnoise/Zamp)**2
 #    Pns = (Pnoise-P50)
     Pns = abs(Vns*Gain)**2/(2*Z50)
-    Tns = float(Tamb)*(Pns)/(P50)
-    gtemp = Tns/Pns
-
-    return Vn,In,Gain,gtemp
+###    Tns = float(Tamb)*(Pns)/(P50)
+###    gtemp = Tns/Pns
+    Pamb = abs(VJF*Gain)**2/(2*Z50)    
+    gtemp = float(Tamb)/(Pamb)
+    Pamb2 = abs(VJF*Gain*(Zamp+Z50)/Zamp)**2/(2*Z50)
+    gtemp2 = float(Tamb)/Pamb2
+    
+    return Vn,In,Gain,gtemp,gtemp2
 
 def noise_corr(data,Vn,In,freq,Zamp,Zant,Gain,Temp):
     """

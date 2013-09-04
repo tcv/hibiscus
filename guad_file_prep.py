@@ -14,7 +14,7 @@ import sys
 #maindir = 'Isla_Guadalupe_data_jun_2013/June15_day_to_night/'
 #day_dir = 'Isla_Guadalupe_data_jun_2013/data_arrays/June15/'
 maindir = '/lustre/anat/Guadalupe_data/'
-daydir = '/lustre/data_arrays/'
+daydir = '/lustre/data_arrays_lim/'
 rebin_ant = []
 ant_time = []
 ant_mask = []
@@ -60,7 +60,7 @@ if int(date_ind)<15:
                             if excess_mask[i]==1.0:
                                 mask[i] = 1.0
                         new_data,new_mask,new_freq = fc.rebin(sub_data,mask,freqs,binscale)
-                        new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,40.,140.)
+                        new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,50.,110.)
                         rebin_ant.append(new_data)
                         ant_time.append(time)
                         ant_mask.append(new_mask)

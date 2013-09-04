@@ -76,7 +76,7 @@ for i in range(0,1):
                         if form=='50ohm':
                             mask = zeros(len(sub_data))
                             new_data,new_mask,new_freq = fc.rebin(sub_data,mask,freqs,binscale)
-                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,40.,140.)
+                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,50.,110.)
                             load.append(new_data)
                             load_time.append(time)
                             load_volt.append(volt)
@@ -84,19 +84,19 @@ for i in range(0,1):
                         elif form=='open':
                             mask = zeros(len(sub_data))
                             new_data,new_mask,new_freq = fc.rebin(sub_data,mask,freqs,binscale)
-                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,40.,140.)
+                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,50.,110.)
                             term.append(new_data)
                             term_time.append(time)
                         elif form=='short':
                             mask = zeros(len(sub_data))
                             new_data,new_mask,new_freq = fc.rebin(sub_data,mask,freqs,binscale)
-                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,40.,140.)
+                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,50.,110.)
                             short.append(new_data)
                             short_time.append(time)
                         elif form=='noise':
                             mask = zeros(len(sub_data))
                             new_data,new_mask,new_freq = fc.rebin(sub_data,mask,freqs,binscale)
-                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,40.,140.)
+                            new_data,new_mask,new_freq = fc.truncate(new_data,new_mask,new_freq,50.,110.)
                             noise.append(new_data)
                             noise_time.append(time)
                         
@@ -113,6 +113,7 @@ for i in range(0,1):
 	Vn = []
 	Gain = []
 	Temp_gain = []
+        Temp_gainZ = []
 	diff_time = []
         diff_volt = []
         diff_temp = []
@@ -123,11 +124,12 @@ for i in range(0,1):
                 	if abs(load_time[i]-short_time[j])<0.01:
 	                    if abs(load_time[i]-term_time[k])<0.01:
         	                if abs(noise_time[l]-load_time[i])<0.01:
-                	            Vn0,In0,G0,T0 = fc.noise_calc(load[i],short[j],term[k],noise[l],Z_amp,new_freq,load_temp[i])
+                	            Vn0,In0,G0,T0,TZ0 = fc.noise_calc(load[i],short[j],term[k],noise[l],Z_amp,new_freq,300.)
                         	    Vn.append(Vn0)
 	                            In.append(In0)
         	                    Gain.append(G0)
                 	            Temp_gain.append(T0)
+                                    Temp_gainZ.append(TZ0)
                         	    diff_time.append(short_time[j])
                                     diff_volt.append(load_volt[i])
                                     diff_temp.append(load_temp[i])
@@ -146,6 +148,7 @@ for i in range(0,1):
 	Vn_avg = []
 	Gain_avg = []
 	TempG_avg = []
+        TempGZ_avg = []
 	diff_time_avg = []
         diff_volt_avg = []
         diff_temp_avg = []
@@ -153,11 +156,13 @@ for i in range(0,1):
 	Vn_lim = []
 	Gain_lim = []
 	TempG_lim = []
+        TempGZ_lim = []
 	diff_time_lim = []
         diff_volt_lim = []
         diff_temp_lim = []
         
         Temp_gain = array(Temp_gain)
+        Temp_gainZ = array(Temp_gainZ)
 	print 'Temp Gain Mean is (*1e9):', ma.median(Temp_gain[:,4000])/1e9
         Gain_array = array(Gain)
 	single_Gain = real(Gain_array[:,4000])
@@ -169,69 +174,83 @@ for i in range(0,1):
 	pylab.scatter(diff_time,ones(len(single_Gain))*(median_Gain+3*std_Gain),c='r',edgecolor='r')
 #	Gain_fit = itp.UnivariateSpline(diff_time,real(single_Gain))
 #	pylab.plot(diff_time,Gain_fit(diff_time))
-	pylab.savefig('/home/tcv/'+caldir+day_dir+'_Gain_evolution_take4',dpi=300)
+	pylab.savefig('/home/tcv/'+caldir+day_dir+'_Gain_evolution',dpi=300)
 	pylab.clf()
 
-        pylab.imshow(real(Gain),vmax=(median_Gain+10*std_Gain),vmin=0,aspect=100./len(Gain),extent=(40,140,len(Gain),0))
+        pylab.imshow(real(Gain),vmax=(median_Gain+10*std_Gain),vmin=0,aspect=60./len(Gain),extent=(50,110,len(Gain),0))
         cbar = pylab.colorbar()
         cbar.set_label('Real Gain')
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')
         pylab.title('Real Gain Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Gain_waterfall_take4',dpi=300)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Gain_waterfall',dpi=300)
         pylab.clf()
 
         single_GX = imag(Gain_array[:,4000])
         median_GX = ma.median(single_GX)
         std_GX = ma.std(single_GX)
 
-        pylab.imshow(imag(Gain),vmin=(median_GX-10*std_GX),vmax=0,aspect=100./len(Gain),extent=(40,140,len(Gain),0))
+        pylab.imshow(imag(Gain),vmin=(median_GX-10*std_GX),vmax=0,aspect=60./len(Gain),extent=(50,110,len(Gain),0))
         cbar = pylab.colorbar() 
         cbar.set_label('Imaginary Gain') 
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')
         pylab.title('Imag Gain Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Gain_waterfall_take4',dpi=300)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Gain_waterfall',dpi=300)
         pylab.clf()
 
         single_TG = Temp_gain[:,4000] 
         median_TG = ma.median(single_TG) 
         std_TG = ma.std(single_TG) 
 
-        pylab.imshow(Temp_gain,vmax=(median_TG+100*std_TG),vmin=0,aspect=100./len(Temp_gain),extent=(40,140,len(Temp_gain),0)) 
+        pylab.imshow(Temp_gain,vmax=(median_TG+100*std_TG),vmin=0,aspect=60./len(Temp_gain),extent=(50,110,len(Temp_gain),0)) 
         cbar = pylab.colorbar()  
         cbar.set_label('Temperature Gain')  
         pylab.xlabel('Frequency (MHz)') 
         pylab.ylabel('Cal Sample') 
         pylab.title('Temperature Gain Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_TempGain_waterfall_take4',dpi=300)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_TempGain_waterfall',dpi=300)
         pylab.clf() 
+
+        single_TGZ = Temp_gainZ[:,4000]
+        median_TGZ = ma.median(single_TGZ)
+        std_TGZ = ma.std(single_TGZ)
+ 
+        pylab.imshow(Temp_gainZ,vmax=(median_TGZ+100*std_TGZ),vmin=0,aspect=60./len(Temp_gainZ),extent=(50,110,len(Temp_gainZ),0))
+        cbar = pylab.colorbar()
+        cbar.set_label('Temperature Gain (with impedence ratio)')
+        pylab.xlabel('Frequency (MHz)')
+        pylab.ylabel('Cal Sample')
+        pylab.title('Temperature Gain w/ Z Data Variation over time for '+ full_date)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_TempGainZ_waterfall',dpi=300)
+        pylab.clf()  
+
 
         Vn = array(Vn)
         single_VR = real(Vn[:,4000])
         median_VR = ma.median(single_VR)
         std_VR = ma.std(single_VR)  
         
-        pylab.imshow(real(Vn),vmax=(median_VR+10*std_VR),vmin=0,aspect=100./len(Vn),extent=(40,140,len(Vn),0))
+        pylab.imshow(real(Vn),vmax=(median_VR+10*std_VR),vmin=0,aspect=60./len(Vn),extent=(50,110,len(Vn),0))
         cbar = pylab.colorbar()   
         cbar.set_label('Real Vn')
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')  
         pylab.title('Real Vn Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Vn_waterfall_take4',dpi=300)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_Vn_waterfall',dpi=300)
         pylab.clf()  
 
         single_VX = imag(Vn[:,4000])
         median_VX = ma.median(single_VX)
         std_VX = ma.std(single_VX)  
         
-        pylab.imshow(imag(Vn),vmax=(median_VX+10*std_VX),vmin=0,aspect=100./len(Vn),extent=(40,140,len(Vn),0))
+        pylab.imshow(imag(Vn),vmax=(median_VX+10*std_VX),vmin=0,aspect=60./len(Vn),extent=(50,110,len(Vn),0))
         cbar = pylab.colorbar()   
         cbar.set_label('Imag Vn')
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')  
         pylab.title('Imag Vn Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Vn_waterfall_take4',dpi=300)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_Vn_waterfall',dpi=300)
         pylab.clf()  
 
         In = array(In)
@@ -239,26 +258,26 @@ for i in range(0,1):
         median_IR = ma.median(single_IR)
         std_IR = ma.std(single_IR)  
         
-        pylab.imshow(real(In),vmax=(median_IR+10*std_IR),vmin=0,aspect=100./len(In),extent=(40,140,len(In),0))
+        pylab.imshow(real(In),vmax=(median_IR+10*std_IR),vmin=0,aspect=60./len(In),extent=(50,110,len(In),0))
         cbar = pylab.colorbar()   
         cbar.set_label('Real In')
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')  
         pylab.title('Real In Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_In_waterfall_take4',dpi=300)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Real_In_waterfall',dpi=300)
         pylab.clf()  
 
         single_IX = imag(In[:,4000])
         median_IX = ma.median(single_IX)
         std_IX = ma.std(single_IX)  
         
-        pylab.imshow(imag(In),vmax=(median_IX+10*std_IX),vmin=0,aspect=100./len(In),extent=(40,140,len(In),0))
+        pylab.imshow(imag(In),vmax=(median_IX+10*std_IX),vmin=0,aspect=60./len(In),extent=(50,110,len(In),0))
         cbar = pylab.colorbar()   
         cbar.set_label('Imag In')
         pylab.xlabel('Frequency (MHz)')
         pylab.ylabel('Cal Sample')  
         pylab.title('Imaginary In Data Variation over time for '+ full_date)
-        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_In_waterfall_take4',dpi=300)
+        pylab.savefig('/home/tcv/'+caldir+day_dir+'_Imag_In_waterfall',dpi=300)
         pylab.clf()  
 
 	time_sort = argsort(diff_time)
@@ -267,6 +286,7 @@ for i in range(0,1):
 	In_sort = []
 	Gain_sort = []
 	TempG_sort = []
+        TempGZ_sort = []
 	diff_time_sort = []
         diff_volt_sort = []
         diff_temp_sort = []
@@ -276,6 +296,7 @@ for i in range(0,1):
 	    In_sort.append(In[time_sort[t]])
 	    Gain_sort.append(Gain[time_sort[t]])
 	    TempG_sort.append(Temp_gain[time_sort[t]])
+            TempGZ_sort.append(Temp_gainZ[time_sort[t]])
             diff_volt_sort.append(diff_volt[time_sort[t]])
             diff_temp_sort.append(diff_temp[time_sort[t]])
 
@@ -306,6 +327,8 @@ for i in range(0,1):
         	        Gain_lim = []
                 	TempG_avg.append(ma.mean(TempG_lim,axis=0))
 	                TempG_lim = []
+                        TempGZ_avg.append(ma.mean(TempGZ_lim,axis=0))
+                        TempGZ_lim = []
         	        diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
                 	diff_time_lim = []
                         diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
@@ -317,6 +340,7 @@ for i in range(0,1):
 	        Vn_lim.append(Vn_sort[i])
         	Gain_lim.append(Gain_sort[i])
 	        TempG_lim.append(TempG_sort[i])
+                TempGZ_lim.append(TempGZ_sort[i])
         	diff_time_lim.append(diff_time_sort[i])
                 diff_volt_lim.append(diff_volt_sort[i])
                 diff_temp_lim.append(diff_temp_sort[i])
@@ -332,6 +356,8 @@ for i in range(0,1):
 	            Gain_lim = []
         	    TempG_avg.append(ma.mean(TempG_lim,axis=0))
 	            TempG_lim = []
+                    TempGZ_avg.append(ma.mean(TempGZ_lim,axis=0))
+                    TempGZ_lim = []
         	    diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
 	            diff_time_lim = []
                     diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
@@ -360,6 +386,8 @@ for i in range(0,1):
         	        Gain_lim = []
                 	TempG_avg.append(ma.mean(TempG_lim,axis=0))
 	                TempG_lim = []
+                        TempGZ_avg.append(ma.mean(TempGZ_lim,axis=0))
+                        TempGZ_lim = []
         	        diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
                 	diff_time_lim = []
                         diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
@@ -371,6 +399,7 @@ for i in range(0,1):
 	        Vn_lim.append(Vn_sort[i])
         	Gain_lim.append(Gain_sort[i])
 	        TempG_lim.append(TempG_sort[i])
+                TempGZ_lim.append(TempGZ_sort[i])
         	diff_time_lim.append(diff_time_sort[i])
                 diff_volt_lim.append(diff_volt_sort[i])
                 diff_temp_lim.append(diff_temp_sort[i])
@@ -385,6 +414,8 @@ for i in range(0,1):
 	            Gain_lim = []
         	    TempG_avg.append(ma.mean(TempG_lim,axis=0))
 	            TempG_lim = []
+                    TempGZ_avg.append(ma.mean(TempGZ_lim,axis=0))
+                    TempGZ_lim = []
         	    diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
 	            diff_time_lim = []
                     diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
@@ -402,6 +433,8 @@ for i in range(0,1):
 	    Gain_lim = []
 	    TempG_avg.append(ma.mean(TempG_lim,axis=0))
 	    TempG_lim = []
+            TempGZ_avg.append(ma.mean(TempGZ_lim,axis=0))
+            TempGZ_lim = []
 	    diff_time_avg.append(ma.mean(diff_time_lim,axis=0))
 	    diff_time_lim = []
             diff_volt_avg.append(ma.mean(diff_volt_lim,axis=0))
@@ -419,6 +452,7 @@ for i in range(0,1):
 	savetxt('/home/tcv/'+caldir+day_dir+'Real_Gain.txt',real(Gain_avg),delimiter =' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'Imag_Gain.txt',imag(Gain_avg),delimiter =' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'TempGain.txt',TempG_avg,delimiter=' ')
+        savetxt('/home/tcv/'+caldir+day_dir+'TempGainZ.txt',TempGZ_avg,delimiter=' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'Cal_time.txt',diff_time_avg,delimiter=' ')
 	savetxt('/home/tcv/'+caldir+day_dir+'Cal_freq.txt',new_freq,delimiter=' ')
         savetxt('/home/tcv/'+caldir+day_dir+'Cal_volt.txt',diff_volt_avg,delimiter=' ')
