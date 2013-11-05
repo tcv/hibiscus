@@ -148,10 +148,11 @@ for s in range(0,len(selected_ind)):
                Vn_s = VnR[cal_ind,j]+1j*VnX[cal_ind,j]
                In_s = InR[cal_ind,j]+1j*InX[cal_ind,j]
                Gain_s = GainR[cal_ind,j]+1j*GainX[cal_ind,j]
-               Tsky[j] = fc.noise_corr(data_eff_cal_db[i,j],Vn_s,In_s,new_freq[j],Z_amp[j],
+               deltaf = new_freq[1]-new_freq[0]
+               Tsky[j] = fc.noise_corr(data_eff_cal_db[i,j],Vn_s,In_s,deltaf,Z_amp[j],
                                     Z_ant[j],Gain_s,TGain_s)
-               TskyZ[j] = fc.noise_corr(data_eff_cal_db[i,j],Vn_s,In_s,new_freq[j],Z_amp[j],
-                                    Z_ant[j],Gain_s,TGainZ_s)
+#               TskyZ[j] = fc.noise_corr(data_eff_cal_db[i,j],Vn_s,In_s,new_freq[j],Z_amp[j],
+#                                    Z_ant[j],Gain_s,TGainZ_s)
 #               Tsky[j] = TGain_s*Psky
             ant_eff_noise_corr.append(Tsky)
             ant_eff_noise_corrZ.append(TskyZ)

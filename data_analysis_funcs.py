@@ -61,6 +61,28 @@ def loadsingle(fname):
 
     return time,form,file_data,mask_data,freq_data,volt,Tamb
 
+def writesingle(fname, new_dir, new_data):
+    """
+    writes a single file in the same format as the original file with updated data.
+    takes as input the filename (with path) for the original file, the new directory, and the new data
+    """
+    f = open(fname)
+    file_name = fname.split('/')[-1]
+    new_fname = new_dir+file_name.split('.')[0]+'_cal.dat'
+    nf = open(new_fname,'w+')
+    for line in f:
+        if line[0]=='#':
+            newline = str(line)
+            nf.write(newline)
+    
+    for i in range(0,len(new_data)):
+        dataline = str(new_data[i])+'\n'
+        nf.write(dataline)
+    
+    nf.close()
+
+    return
+    
 def imped(ant_data,cable_len):
     """
     Calculates impedence from the smith chart data.
@@ -455,32 +477,22 @@ def noise_calc(load,short,term,noise,Zamp,freq,Tamb):
     VJF = sqrt(4*1.381e-23*Tamb*Z50*(freq[1]-freq[0])*1e6)*ones(len(freq))
 #    VJO = sqrt(4*1.381e-23*300*absolute(Z100)*(freq[1]-freq[0])*1e6)*ones(len(freq))
     VJO = sqrt(2.)*VJF
-    Gain = (Z100*(V50-Zamp*Vsh/(Zamp+Z50))*(Zamp+Z50)-Z50*(V100-Zamp*Vsh/(Zamp+Z100))*(Zamp+Z100))/(Zamp*VJF*(Z100-sqrt(2.)*Z50))
-    In = (V50-Zamp*Vsh/(Zamp+Z50))*(Zamp+Z50)/(Gain*Zamp*Z50)-VJF/Z50 
+    dV50 = (V50 - Zamp*Vsh/(Zamp+Z50))
+    dV100 = (V100-Zamp*Vsh/(Zamp+Z100))
+    Gain = (dV50*(Zamp+Z50)*Z100-dV100*(Zamp+Z100)*Z50)/(Zamp*(VJF*Z100-VJO*Z50))
     Vn = Vsh/Gain
+    In = V50*(Zamp+Z50)/(Gain*Z50*Zamp)-(VJF+Vn)/Z50
 #    Vnoise = sqrt(absolute(Zamp)*10**(noise/10.))
-    Vnoise = sqrt(2*Z50*10**(noise/10.))
-##    Vns = Vnoise/Gain - Zamp*(VJF+Vn)/(Zamp+Z50)-In*Zamp*Z50/(Zamp+Z50)
-    Vm50 = Zamp*(VJF+Vn)/(Zamp+Z50)+In*Zamp*Z50/(Zamp+Z50)
-    Vns = sqrt(((Zamp+Z50)*Vnoise/Zamp/Gain)**2-Vm50**2)
-#    Pns = absolute(Vns**2/Zamp)
-    Pnoise = abs(Vnoise)**2/(2*Z50)
-    P50 = abs(Vm50*Gain)**2/(2*Z50)
-    Psh = abs(Vn*Gain)**2/(2*Z50)
-#    Tns = 300*(abs(Vnoise/Gain)**2-abs(Vm50)**2)/abs(Vm50)**2   
-#    Tns = 300*(abs(Vnoise)**2)*(Zamp+Z50)/Zamp/Gain/abs(Vm50)**2
-#    Pns = (Pnoise-P50)
-    Pns = abs(Vns*Gain)**2/(2*Z50)
-###    Tns = float(Tamb)*(Pns)/(P50)
-###    gtemp = Tns/Pns
+#    Vnoise = sqrt(2*Z50*10**(noise/10.))
     Pamb = abs(VJF*Gain)**2/(2*Z50)    
     gtemp = float(Tamb)/(Pamb)
     Pamb2 = abs(VJF*Gain*(Zamp+Z50)/Zamp)**2/(2*Z50)
     gtemp2 = float(Tamb)/Pamb2
+    gtemp = float(Tamb)/VJF**2
     
     return Vn,In,Gain,gtemp,gtemp2
 
-def noise_corr(data,Vn,In,freq,Zamp,Zant,Gain,Temp):
+def noise_corr(data,Vn,In,deltaf,Zamp,Zant,Gain,Temp):
     """
     Subtracts the Vn and In from a dataset and converts to Vsky.
     Assumes data is in dB and freq is in MHz
@@ -491,9 +503,11 @@ def noise_corr(data,Vn,In,freq,Zamp,Zant,Gain,Temp):
 #    Vant = sqrt(absolute(Zamp)*Pant)
     Vant = sqrt(2*50.*Pant)
     Vsky = Vant*(Zamp+Zant)/Zamp/Gain-Vn1-In1*Zant
-    Psky = absolute(Vsky*Gain)**2*real(Zant)/(2*absolute(Zant)**2)
+#   Psky = absolute(Vsky*Gain)**2*real(Zant)/(2*absolute(Zant)**2)
 #    Psky = absolute(Vsky**2/Zant)
-    Tsky = Temp*Psky
+#   Tsky = Temp*Psky
+    Gt = (1/(4*1.381e-23*abs(Zant)*deltaf*1e6))*abs(Zant/(Zamp+Zant))**2
+    Tsky = Gt*abs(Vsky)**2
 
     return Tsky
 

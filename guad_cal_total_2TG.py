@@ -28,7 +28,7 @@ VnX = []
 Volt = []
 Tamb = []
 
-lim_dates = ['01','03','04','05']
+lim_dates = ['01','02','03','04','05','06','07','08','09','11','12','13','14']
 
 for date in lim_dates:
 #   if i<10:
@@ -185,8 +185,9 @@ pylab.clf()
 
 
 pylab.scatter(diff_time,Volt,c='b',edgecolor='b',s=3)
-#pylab.xlabel('Time (Hours since Midnight GMT June01)')
+pylab.xlabel('Time (Hours since Midnight GMT June01)')
 pylab.ylabel('Voltage (V)')
+pylab.grid()
 pylab.title('System Voltage for Calibrator Files')
 pylab.savefig('/home/tcv/'+caldir+'Full_Voltage',dpi=300)
 pylab.clf()
@@ -240,7 +241,7 @@ lim_time.append(diff_time[0])
 lim_volt.append(Volt[0])
 lim_temp.append(Tamb[0])
 for i in range(1,len(Tamb)):
-    if (Volt[i]-Volt[i-1])>0.1:
+    if (Volt[i]-Volt[i-1])>0.5:
         sub_TG.append(ma.mean(lim_TG,axis=0))
         sub_TGZ.append(ma.mean(lim_TGZ,axis=0))
         sub_GR.append(ma.mean(lim_GR,axis=0))
@@ -274,6 +275,18 @@ for i in range(1,len(Tamb)):
     lim_time.append(diff_time[i])
     lim_volt.append(Volt[i])
     lim_temp.append(Tamb[i])
+
+sub_TG.append(ma.mean(lim_TG,axis=0))
+sub_TGZ.append(ma.mean(lim_TGZ,axis=0))
+sub_GR.append(ma.mean(lim_GR,axis=0))
+sub_GX.append(ma.mean(lim_GX,axis=0))
+sub_VR.append(ma.mean(lim_VR,axis=0))
+sub_VX.append(ma.mean(lim_VX,axis=0))
+sub_IR.append(ma.mean(lim_IR,axis=0))
+sub_IX.append(ma.mean(lim_IX,axis=0))
+sub_temp.append(ma.mean(lim_temp,axis=0))
+sub_volt.append(ma.mean(lim_volt,axis=0))
+sub_time.append(lim_time[-1])
 
 print shape(sub_time)
 savetxt(cal_dir+'Real_In_subavg.txt',sub_IR,delimiter = ' ')
@@ -328,7 +341,7 @@ savetxt(cal_dir+'Real_Gain_avg.txt',mean_GR,delimiter =' ')
 savetxt(cal_dir+'Imag_Gain_avg.txt',mean_GX,delimiter =' ')
 savetxt(cal_dir+'TempGain_avg.txt',mean_TG,delimiter=' ')
 savetxt(cal_dir+'TempGainZ_avg.txt',mean_TGZ,delimiter=' ')
-savetxt(cal_dir+'Cal_time_take4.txt',diff_time,delimiter=' ')
-savetxt(cal_dir+'Cal_freq_take4.txt',new_freq,delimiter=' ')
-savetxt(cal_dir+'Cal_volt_take4.txt',Volt,delimiter=' ')
-savetxt(cal_dir+'Cal_temp_take4.txt',Tamb,delimiter=' ')
+savetxt(cal_dir+'Cal_time.txt',diff_time,delimiter=' ')
+savetxt(cal_dir+'Cal_freq.txt',new_freq,delimiter=' ')
+savetxt(cal_dir+'Cal_volt.txt',Volt,delimiter=' ')
+savetxt(cal_dir+'Cal_temp.txt',Tamb,delimiter=' ')

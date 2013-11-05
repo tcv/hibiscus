@@ -1,0 +1,100 @@
+\documentclass[9pt]{article}
+\usepackage{graphicx}
+
+\begin{document}
+
+\title{HIbiscus Data Calibration}
+\maketitle
+
+\section{Noise Circuit}
+To perform data analysis of the system I wrote down a circuit layout for the noise of the first stage amplifier. I assumed that there were two contributions to the noise. First, a voltage noise source independent of the input impedence to the amplifier. Second, a current noise source dependent on the input impedence to the amplifier. \\
+
+Given this model you get equations \ref{eq:short}, \ref{eq:50ohm}, \ref{eq:100ohm}, \ref{eq:noise} and \ref{eq:ant} for the measured voltage through the system for the different data collection modes.
+
+\begin{center}
+\begin{equation}\label{eq:short}
+V^{sh}_{meas} = \mathbf{G} V_n
+\end{equation}
+
+\begin{equation} \label{eq:50ohm}
+V^{50 \Omega}_{meas} = \mathbf{G}\left( \frac{Z_aZ_{50}I_n}{Z_a+Z_{50}}+\frac{Z_a (V_{J50}+V_n)}{Z_a+Z_{50}} \right)
+\end{equation}
+
+\begin{equation} \label{eq:100ohm}
+V^{100 \Omega}_{meas} = \mathbf{G}\left( \frac{Z_aZ_{50}I_n}{Z_a+Z_{50}}+\frac{Z_a (V_{J100}+V_n)}{Z_a+Z_{100}} \right)
+\end{equation}
+
+\begin{equation} \label{eq:noise}
+V^{noise}_{meas} = \mathbf{G}\left( \frac{Z_aZ_{50}I_n}{Z_a+Z_{50}}+\frac{Z_a (V_{J50}+V_n+V_{ns})}{Z_a+Z_{50}} \right)
+\end{equation}
+
+\begin{equation} \label{eq:ant}
+V^{antenna}_{meas} = \mathbf{G}\left( \frac{Z_aZ_{ant}I_n}{Z_a+Z_{ant}}+\frac{Z_a(V_n+V_{sky})}{Z_a+Z_{ant}} \right)
+\end{equation}
+\end{center}
+
+The impedences in the above equations can be measured as a function of frequency (f) using a Vector Network Analyzer (VNA). Our measurements give $Z_{50} = 50 \Omega$, while $Z_{100} = 100 \Omega * e^{\mathbf{i} 2 \pi f t_d}$, as there is a measured time delay ($t_d$) of 400 ps for the $100 \Omega$ terminator. The antenna impedence ($Z_{ant}$) and amplifier impedence ($Z_a$) were also measured usingthe VNA, but there may be an additional time delay between the two that were unable to measure directly.\\
+
+The other known variables in the equations are the Johnson-Nyquist Noise terms ($V_{J50}$ and $V_{J100}$), which have values determined by equation \ref{eq:vj}, with $T_{amb}$ being the temperature at that location in units of Kelvin. 
+
+\begin{center}
+\begin{equation} \label{eq:vj}
+V_{JZ} = \sqrt{4kT_{amb}|Z| \Delta f}
+\end{equation}
+\end{center}
+
+Using equations \ref{eq:short}, \ref{eq:50ohm} and \ref{eq:100ohm}, we can solve for the Gain, Voltage Noise, and Current Noise terms ($\mathbf{G}$, $V_n$, and $I_n$). The details of this derivation are shown below. \\
+
+First we define $\Delta V^{50}$ and $\Delta V^{100}$. 
+
+\begin{center}
+\begin{equation} \label{eq:dV}
+\Delta V^Z = V^{Z}_{meas} - \frac{Z_a}{Z_a+Z}V^{sh}_{meas}
+\end{equation}
+\end{center}
+
+Then we use the $\Delta V^Z$ terms to get equations \ref{eq:gain}, \ref{eq:Vn} and \ref{eq:In}.
+
+\begin{center}
+\begin{equation} \label{eq:gain}
+\mathbf{G} = \frac{\Delta V^{50} (Z_a+Z_{50})Z_{100} - \Delta V^{100} (Z_a+Z_{100}) Z_{50}}{Z_a (V_{J50} Z_{100}-V_{J100} Z_{50})}
+\end{equation}
+
+\begin{equation} \label{eq:Vn}
+V_n = \frac{V^{sh}_{meas}}{\mathbf{G}}
+\end{equation}
+
+\begin{equation} \label{eq:In}
+I_n = \frac{V^{50 \Omega}_{meas} (Z_a+Z_{50})}{\mathbf{G} Z_a Z_{50}}-\frac{V_{J50}+V_n}{Z_{50}}
+\end{equation}
+\end{center}
+
+The computer actually measures the power $P_{meas}$ for the short, $50 \Omega$, $100 \Omega$, noise and antenna data. This power is measured in dB, so to relate this data to our $V_{meas}$ data, we use two equations. First, we convert the data to linear scale via equation \ref{eq:dB}. Then we convert power to voltage using equation \ref{eq:power}. 
+
+\begin{center}
+\begin{equation} \label{eq:dB}
+P^{lin}_{meas} = 10^{P^{dB}_{meas}/10}
+\end{equation}
+
+\begin{equation} \label{eq:power}
+P_{meas} = \frac{\mathbf{G}V_{meas}^2 \Re (Z)}{2 |Z|^2}
+\end{equation}
+\end{center}
+
+
+Equations \ref{eq:gain}, \ref{eq:Vn} and \ref{eq:In} are used to derive the values of $\mathbf{G}(f)$, $V_n(f)$ and $I_n(f)$ for each set of calibrator datasets. The average is taken over the battery life cycle and smoothed to remove any thermal noise left in the functions. \\
+
+Using these functions, we can then get $V_{sky}$ from equation \ref{eq:ant}. Our final stage is to convert the voltages into temperatures. This conversion can be done by using the fact that $T$ is proportional to $V^2$. Therefore, $T_{sky}/{V_{sky}^2}$ should be the same as $T_{amb}/V_{amb}^2$. \\
+
+In our calculation we used $T_{amb} = 300 K$ and $V_{amb}^2 = V_{J50}^2 Z_a/(Z_a+Z_{50})$. The final equation (\ref{eq:Tsky}) is used to give us a set of sky temperatures that can be compared to the GSM data. 
+
+\begin{center}
+\begin{equation} \label{eq:Tsky}
+T_{sky} = \frac{T_{amb}}{V_{amb}^2} V_{sky}^2
+\end{equation}
+\end{center}
+
+\section{Results}
+
+
+\end{document}
