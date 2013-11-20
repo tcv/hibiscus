@@ -470,7 +470,7 @@ def noise_calc(load,short,term,noise,Zamp,freq,Tamb):
     Z50 = 50.*ones(len(freq))
     Vsh = sqrt(2*Z50*10**(short/10.))
     V50 = sqrt(2*Z50*10**(load/10.))
-    V100 = sqrt(2*Z50*10**(load/10.))
+    V100 = sqrt(2*Z50*10**(term/10.))
 #    Vsh = sqrt(absolute(Zamp)*10**(short/10.))
 #    V50 = sqrt(absolute(Zamp)*10**(load/10.))
 #    V100 = sqrt(absolute(Zamp)*10**(term/10.))
@@ -491,6 +491,29 @@ def noise_calc(load,short,term,noise,Zamp,freq,Tamb):
     gtemp = float(Tamb)/VJF**2
     
     return Vn,In,Gain,gtemp,gtemp2
+
+def noise_only_calc(load,short,term,Zamp,freq):
+    """
+    Calculates the Vn and In for a given 50 Ohm, 100 Ohm, and Short dataaset.
+    Assumes data is in linear units, frequency is in MHz.
+    """
+    Tamb=300.
+    Z100 = 100.*e**(2*pi*freq*400*1e-6*1j)
+    Z50 = 50.*ones(len(freq))
+    VJF = sqrt(2*Z50*1.381e-23*Tamb*(freq[1]-freq[0])*1e6)*ones(len(freq))
+    VJO = 2.*VJF    
+    Pn = short
+    Zt50 = abs(Zamp+Z50)**2
+    Zt100 = abs(Zamp+Z100)**2
+    Vn = sqrt(2*abs(Za)**2*Pn/real(Za))
+    
+    
+#    Vn = Vsh
+#    In = (V50*V100/(V100-V50))*((Z100-Z50)/(Z100*Z50)+(Vn+VJO)/(Z100*V100)-(Vn+VJF)/(Z50*V50))
+#    Za = Z50/((Vn+VJF+Z50*In)/V50-1)
+
+    
+    return Vn,In,Za
 
 def noise_corr(data,Vn,In,deltaf,Zamp,Zant,Gain,Temp):
     """

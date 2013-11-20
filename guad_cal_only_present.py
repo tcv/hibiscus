@@ -36,10 +36,12 @@ testfile = loadtxt(data_dir+'June01_day_to_night/'+os.listdir(data_dir+'June01_d
 freqs = arange(0,250.,250./len(testfile))
 binds = []
 einds = []
-for i in range(0,15):
-    bind = where(freqs<=(59.+2*i))[0][-1]
-    eind = where(freqs>=(61.+2*i))[0][0]
-    print 'Sum in 2 MHz Bin:', eind-bind
+fmin = 45.
+fint = 0.2
+for i in range(0,255):
+    bind = where(freqs<=(fmin+fint*i))[0][-1]
+    eind = where(freqs>=(fmin+fint*(i+1)))[0][0]
+#    print 'Sum in Bin:', eind-bind
     binds.append(bind)
     einds.append(eind)    
 
@@ -91,7 +93,7 @@ comp_day_volt = array(comp_day_volt)
 mean_processed_data = ma.mean(processed_data,axis=0)
 std_processed_data = ma.std(processed_data,axis=0)
 
-mask = zeros((len(processed_data),15))
+mask = zeros((len(processed_data),len(processed_data[0])))
 for i in range(1,len(processed_data)-1):
     for j in range(0,len(processed_data[0])):
         if processed_volt[i]>=12.:
@@ -113,9 +115,9 @@ for i in range(1,len(processed_data)-1):
             processed_data[i] = 0.
 
 print 'Percentage Masked Data:', 100*sum(mask,axis=0)/len(mask)
-print where(isnan(processed_data)), where(isinf(processed_data))
+#print where(isnan(processed_data)), where(isinf(processed_data))
 
-comp_mask = zeros((len(comp_day_data),15))
+comp_mask = zeros((len(comp_day_data),len(comp_day_data[0])))
 for i in range(0,len(comp_day_data)):
     for j in range(0,len(processed_data[0])):
         if comp_day_volt[i]>=12.:
@@ -156,16 +158,17 @@ for i in range(0,len(comp_day_data)):
 
 comp_day_sort = argsort(comp_day_hour)
 cdtime = sort(comp_day_hour)
-cddata = zeros((len(comp_day_data),15))
-cdmask = zeros((len(comp_day_data),15))
+cddata = zeros((len(comp_day_data),len(comp_day_data[0])))
+cdmask = zeros((len(comp_day_data),len(comp_day_data[0])))
 for i in range(0,len(comp_day_sort)):
     cddata[i] = comp_day_data[comp_day_sort[i]]
     cdmask[i] = comp_mask[comp_day_sort[i]]
 
-refit_data = zeros((len(processed_data),15))
+refit_data = zeros((len(processed_data),len(processed_data[0])))
 for i in range(1,len(day_ends)):
-    for f in range(0,15):
-        diff_data = []
+    diff_data = []
+    for f in range(0,len(processed_data[0])):
+#        diff_data = []
         for j in range(day_ends[i-1],day_ends[i]):
             ct = 24.
             ctind = 0
@@ -178,18 +181,19 @@ for i in range(1,len(day_ends)):
             if mask[j,f]==0.:
 #            if cdmask[ctind]==0.:
                 diff_data.append(processed_data[j,f]-cddata[ctind,f])
-        avg_diff = ma.mean(diff_data)
-        print 'June ', dates[i-1], ' offset:',avg_diff
+    avg_diff = ma.mean(diff_data)
+    print 'June ', dates[i-1], ' offset:',avg_diff
+    for f in range(0,len(processed_data[0])):
         for j in range(day_ends[i-1],day_ends[i]):
             refit_data[j,f] = processed_data[j,f]-avg_diff 
  
 
 sidereal_sort = argsort(sidereal_hour) 
 stime = sort(sidereal_hour) 
-sdata = zeros((len(processed_data),15))
-smask = zeros((len(processed_data),15))
-rfsdata = zeros((len(processed_data),15))
-stddata = zeros((len(processed_data),15))
+sdata = zeros((len(processed_data),len(processed_data[0])))
+smask = zeros((len(processed_data),len(processed_data[0])))
+rfsdata = zeros((len(processed_data),len(processed_data[0])))
+stddata = zeros((len(processed_data),len(processed_data[0])))
 for i in range(0,len(sidereal_sort)): 
     sdata[i] = processed_data[sidereal_sort[i]] 
     smask[i] = mask[sidereal_sort[i]] 
@@ -197,7 +201,7 @@ for i in range(0,len(sidereal_sort)):
     stddata[i] = processed_std[sidereal_sort[i]]
 
 for i in range(1,len(smask)-1):
-    for f in range(0,15):
+    for f in range(0,len(processed_data[0])):
         if sdata[i,f]>=(0.5*(sdata[i-1,f]+sdata[i+1,f])+500):
             smask[i,f] = 1.0
         elif sdata[i,f]<=(0.5*(sdata[i-1,f]+sdata[i+1,f])-500):
@@ -206,12 +210,12 @@ for i in range(1,len(smask)-1):
 print 'New Mask percentages:',100.*sum(smask,axis=0)/len(smask)
 
 stack_time = arange(0,24,0.01)
-stack_data = zeros((len(stack_time),15))
-rfstack_data = zeros((len(stack_time),15))
-stack_std = zeros((len(stack_time),15))
-rfstack_std = zeros((len(stack_time),15))
+stack_data = zeros((len(stack_time),len(processed_data[0])))
+rfstack_data = zeros((len(stack_time),len(processed_data[0])))
+stack_std = zeros((len(stack_time),len(processed_data[0])))
+rfstack_std = zeros((len(stack_time),len(processed_data[0])))
 max_ind = where(stime>=stack_time[1])[0][0]
-for f in range(0,15):
+for f in range(0,len(processed_data[0])):
     new_data = ma.array(sdata[0:max_ind,f],mask=smask[0:max_ind,f])
     new_std = ma.array(stddata[0:max_ind,f],mask=smask[0:max_ind,f])
     new_compress = ma.compressed(new_data)
