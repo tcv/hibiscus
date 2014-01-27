@@ -5,6 +5,7 @@ import numpy.ma as ma
 from scipy import optimize
 import os
 import skrf as rf
+import ephem as eph
 
 def loadsingle(fname):
     """
@@ -354,7 +355,6 @@ def rebin(data,masked,freq,binscale):
     Rebins data to coarser frequency resolution.
     Assumes that the input is the data after flagging, mask,
     corresponding freq array and a binscale (number of bins to merge).
-    Uses median rather than mean to avoid single freq outliers
     Output is rebinned data with corresponding freq, mask arrays.
     """
     if binscale > 1:
@@ -363,23 +363,21 @@ def rebin(data,masked,freq,binscale):
         new_freq = zeros(len(data)/binscale)
         f=0
         for f in range(0, len(new_data)-1):
-            test_data = ma.array(data[f*binscale:(f+1)*binscale],mask=masked[f*binscale:(f+1)*binscale])
-            test_data_con = ma.compressed(test_data)
-#            if len(test_data_con)>=1:
-#                new_data[f] = ma.min(test_data_con)
-#            else: 
-#                new_data[f] = 0.0
-            new_data[f] = ma.mean(test_data_con)
+            if len(masked[f*binscale:(f+1)*binscale])==sum(masked[f*binscale:(f+1)*binscale]):
+                new_data[f] = 1.0
+            else: 
+                test_data = ma.array(data[f*binscale:(f+1)*binscale],mask=masked[f*binscale:(f+1)*binscale])
+                test_data_con = ma.compressed(test_data)
+                new_data[f] = ma.mean(test_data_con)
             if sum(masked[f*binscale:(f+1)*binscale])>=binscale/2.:
                 new_mask[f] = 1.0
             new_freq[f] = ma.mean(freq[f*binscale:(f+1)*binscale])
-        test_data = ma.array(data[(f+1)*binscale:-1],mask=masked[(f+1)*binscale:-1])
-        test_data_con = ma.compressed(test_data) 
-#        if len(test_data_con)>=1:
-#            new_data[-1] = ma.min(test_data_con)
-#        else: 
-#            new_data[-1] = 0.0
-        new_data[-1] = ma.mean(test_data_con)
+        if len(masked[(f+1)*binscale:-1])==sum(masked[(f+1)*binscale:-1]):
+            new_data[-1] = 1.0
+        else:
+            test_data = ma.array(data[(f+1)*binscale:-1],mask=masked[(f+1)*binscale:-1])
+            test_data_con = ma.compressed(test_data) 
+            new_data[-1] = ma.mean(test_data_con)
         if sum(masked[(f+1)*binscale:-1])>=1.:
             new_mask[-1] = 1.0
         new_freq[-1] = ma.mean(freq[(f+1)*binscale:-1])
@@ -422,9 +420,12 @@ def timerebin(data,masked):
     masked = array(masked)
     
     for f in range(0,len(data[0])):
-        masked_data = ma.array(data[:,f],mask=masked[:,f])
-        compressed_data = ma.compressed(masked_data)
-        new_data[f] = ma.mean(compressed_data)
+        if sum(masked[:,f])==len(masked[:,f]):
+            new_data[f] = 1.0
+        else:
+            masked_data = ma.array(data[:,f],mask=masked[:,f])
+            compressed_data = ma.compressed(masked_data)
+            new_data[f] = ma.mean(compressed_data)
         if sum(masked[:,f])>=len(data[0])/2.:
             new_mask[f] = 1.0
         
@@ -588,4 +589,20 @@ def rb_noise_calc(load,short,term,noise,Z_amp,freq):
         int_freq.append(float(i))
     return Tu,Ts,Tc,int_freq  
 
+def sidereal(time,idate):
+    """
+    Turns a time in UTC (defined since initial) into LST.
+    time is in hours and idate is in 'YYYY/MM/DD'
+    """
+    initial = eph.date('2013/6/1')
+    guad = eph.Observer()
+    guad.lon = '-118.3'
+    guad.lat = '28.8833'
+    
+    single = eph.date(initial+time/24.)
+    guad.date = single
+    single_time = guad.sidereal_time()
+    sidereal_hour = single_time*12./pi
+
+    return sidereal_hour
 

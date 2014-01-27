@@ -82,17 +82,20 @@ if int(date_ind)<15:
                 processed_time.append(time)
 
 #Sidereal Time Calculation
-initial = eph.date('2013/6/1')
-guad = eph.Observer()
-guad.lon = '-118.3'
-guad.lat = '28.8833'
+#initial = eph.date('2013/6/1')
+#guad = eph.Observer()
+#guad.lon = '-118.3'
+#guad.lat = '28.8833'
 
 sidereal_hour = []
+idate = '2013/6/1'
 for i in range(0,len(processed_time)):
-    single_date = eph.date(initial+processed_time[i]/24.)
-    guad.date = single_date
-    single_time = guad.sidereal_time()
-    sidereal_hour.append(single_time*12./pi)
+    single_sid = fc.sidereal(processed_time[i],idate)
+    sidereal_hour.append(single_sid)
+#    single_date = eph.date(initial+processed_time[i]/24.)
+#    guad.date = single_date
+#    single_time = guad.sidereal_time()
+#    sidereal_hour.append(single_time*12./pi)
 
 #Sort data by LST
 processed_data = array(processed_data)

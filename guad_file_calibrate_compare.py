@@ -33,6 +33,7 @@ directories = os.listdir(maindir)
 date_ind = sys.argv[1]
 
 #For efficiency calculation
+#R_ant,X_ant,F_ant = fc.imped_skrf(ant_s11_file,3.129e-9)
 R_ant,X_ant,F_ant = fc.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = fc.imped_skrf(amp_s_file,0.0)
 Effic = fc.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
@@ -62,6 +63,18 @@ processed_volt_b = []
 processed_time_b = []
 date_mid = [0.0,0.0,99.055,123.626,0.0,171.583,185.119,0.0,0.0,0.0,291.619,315.081,331.218,340.552]
 split_short = [False,False,False,True,False,False,False,False,False,False,False,True,False,False]
+minfgu = [60.,70.,60.,60.,60.,60.,62.,60.,70.,62.,62.,60.,60.,60.]
+maxfgu = [90.,90.,90.,90.,90.,90.,77.,90.,75.,90.,80.,90.,80.,90.]
+minfgm = [60.,70.,60.,60.,65.,62.,62.,62.,70.,70.,70.,62.,62.,60.]
+maxfgm = [90.,75.,75.,75.,70.,77.,77.,77.,75.,70.,75.,85.,77.,75.]
+minft = [60.,70.,60.,60.,65.,62.,62.,62.,70.,62.,62.,62.,60.,62.]
+maxft = [90.,90.,80.,80.,80.,77.,77.,80.,75.,80.,90.,82.,77.,80.]
+minfgub = [70.,70.,60.,60.,70.,70.,60.,70.,70.,70.,70.,60.,60.,60.]
+maxfgub = [70.,70.,80.,80.,70.,70.,90.,70.,70.,70.,82.,80.,80.,77.]
+minfgmb = [70.,70.,60.,60.,70.,70.,62.,70.,70.,70.,70.,62.,62.,60.]
+maxfgmb = [70.,70.,75.,75.,70.,70.,75.,70.,70.,70.,75.,80.,77.,77.]
+minftb = [70.,70.,60.,60.,70.,70.,62.,70.,70.,70.,70.,62.,60.,62.] 
+maxftb = [70.,70.,77.,75.,70.,70.,75.,70.,70.,70.,75.,82.,80.,75.] 
 
 if int(date_ind)<15:
     direct = 'June'+date_ind+'_day_to_night'
@@ -125,26 +138,21 @@ if split_short[int(date_ind)-1]:
     Ktb = 300./(loadb-shortb)
 Kgu = loadtxt(maindir+direct+'/sm_un_sub_K.txt')
 Kgm = loadtxt(maindir+direct+'/sm_mean_sub_K.txt')
+#print Kgm
+Kgm = abs(Kgm)
 
+#print where(isnan(Kgm))
 #Sidereal Time Calculation
-initial = eph.date('2013/6/1')
-guad = eph.Observer()
-guad.lon = '-118.3'
-guad.lat = '28.8833'
-
 sidereal_hour = []
+idate = '2013/6/1'
 for i in range(0,len(processed_time)):
-    single_date = eph.date(initial+processed_time[i]/24.)
-    guad.date = single_date
-    single_time = guad.sidereal_time()
-    sidereal_hour.append(single_time*12./pi)
+    single_sid = fc.sidereal(processed_time[i],idate)
+    sidereal_hour.append(single_sid)
 
 sidereal_hour_b = []
 for i in range(0,len(processed_time_b)):
-    single_date = eph.date(initial+processed_time_b[i]/24.)
-    guad.date = single_date
-    single_time = guad.sidereal_time()
-    sidereal_hour_b.append(single_time*12./pi)
+    single_sid = fc.sidereal(processed_time_b[i],idate)
+    sidereal_hour_b.append(single_sid)
 
 #Sort data by LST
 processed_data = array(processed_data)
@@ -192,10 +200,10 @@ print 'Percentage of Masked Data from Frequency Masking part2',percent_maskedb
 #Adding in Time Masking
 #if date_mid[int(date_ind)-1]>0.0:
 for i in range(0,len(freq)):
-    new_mask = fc.timeflag(sortdata[:,i],sortmask[:,i],sorttime,3.,timescale)
+    new_mask = fc.timeflag(sortdata[:,i],sortmask[:,i],sorttime,2.5,timescale)
     sortmask[:,i] = new_mask
     if date_mid[int(date_ind)-1]>0.0:
-        new_maskb = fc.timeflag(sortdatab[:,i],sortmaskb[:,i],sorttimeb,3.,timescale) 
+        new_maskb = fc.timeflag(sortdatab[:,i],sortmaskb[:,i],sorttimeb,2.5,timescale) 
         sortmaskb[:,i] = new_maskb
 
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
@@ -226,7 +234,7 @@ for i in range(0,len(freq)):
 
 mean_data = array(mean_data)
 mean_mask = zeros(len(mean_data))
-spike_flag = fc.spike_flag(mean_data,5.)
+spike_flag = fc.spike_flag(mean_data,4.)
 for i in range(0,len(mean_data)):
     if mean_data[i] == 0.0:
         mean_mask[i] = 1.0
@@ -240,7 +248,7 @@ print 'Total Number of Masked Frequencies:',sum(mean_mask)
 
 mean_datab = array(mean_datab) 
 mean_maskb = zeros(len(mean_datab)) 
-spike_flagb = fc.spike_flag(mean_datab,5.)
+spike_flagb = fc.spike_flag(mean_datab,4.)
 for i in range(0,len(mean_datab)):
     if mean_datab[i] == 0.0:
         mean_maskb[i] = 1.0
@@ -250,13 +258,7 @@ for i in range(0,len(mean_datab)):
         mean_datab[i] = 0.1*(mean_datab[i+5]+mean_datab[i+4]+mean_datab[i+3]+mean_datab[i+2]+mean_datab[i+1]+mean_datab[i-5]+mean_datab[i-4]+mean_datab[i-3]+mean_datab[i-2]+mean_datab[i-1])
 #spike_flag = fc.spike_flag(mean_data,100)
 print 'Number of Spiked Frequencies in part 2:',sum(spike_flagb) 
-print 'Total Number of Masked Frequencies in part 2:',sum(mean_mask)
-
-#print 'Nandata present in mean at:',where(isnan(mean_data))
-#nandata = where(isnan(mean_data))
-#for i in range(0,len(nandata[0])):
-#    mean_data[nandata[0][i]] = mean_data[nandata[0][i]-1]
-#    mean_mask[nandata[0][i]] = 1.0
+print 'Total Number of Masked Frequencies in part 2:',sum(mean_maskb)
 
 if split_short[int(date_ind)-1]:
     tcal_mean = mean_data*Kt
@@ -269,189 +271,212 @@ gmcal_mean = mean_data*Kgm
 gucal_meanb = mean_datab*Kgu
 gmcal_meanb = mean_datab*Kgm
 
-tcal_mean_rebin = []
-gucal_mean_rebin = []
-gmcal_mean_rebin = []
-freqs_rebin = []
-bin = 9
-for i in range(0,len(tcal_mean)/bin):
-    if len(mean_mask[bin*i:bin*(i+1)])==sum(mean_mask[bin*i:bin*(i+1)]):
-        tcal_mean_rebin.append(0.0)
-        gucal_mean_rebin.append(0.0)
-        gmcal_mean_rebin.append(0.0)
-        freqs_rebin.append(ma.mean(freq[bin*i:bin*(i+1)]))
-    else:
-        tmr_array = ma.array(tcal_mean[bin*i:bin*(i+1)],mask=mean_mask[bin*i:bin*(i+1)])
-        tmr_comp = ma.compressed(tmr_array)
-        tcal_mean_rebin.append(ma.mean(tmr_comp))
-        gumr_array = ma.array(gucal_mean[bin*i:bin*(i+1)],mask=mean_mask[bin*i:bin*(i+1)])
-        gumr_comp = ma.compressed(gumr_array)
-        gucal_mean_rebin.append(ma.mean(gumr_comp))
-        gmmr_array = ma.array(gmcal_mean[bin*i:bin*(i+1)],mask=mean_mask[bin*i:bin*(i+1)])
-        gmmr_comp = ma.compressed(gmmr_array)
-        gmcal_mean_rebin.append(ma.mean(gmmr_comp))
-        fr_array = ma.array(freq[bin*i:bin*(i+1)],mask=mean_mask[bin*i:bin*(i+1)])
-        fr_comp = ma.compressed(fr_array)
-        freqs_rebin.append(ma.mean(fr_comp))
-if len(mean_mask[bin*(i+1):-1])==sum(mean_mask[bin*(i+1):-1]):
-    tcal_mean_rebin.append(0.0) 
-    gucal_mean_rebin.append(0.0)
-    gmcal_mean_rebin.append(0.0)
-    freqs_rebin.append(ma.mean(freq[bin*(i+1):-1]))
-else:
-    tmr_array = ma.array(tcal_mean[bin*(i+1):-1],mask=mean_mask[bin*(i+1):-1])
-    tmr_comp = ma.compressed(tmr_array)
-    tcal_mean_rebin.append(ma.mean(tmr_comp))
-    gumr_array = ma.array(gucal_mean[bin*(i+1):-1],mask=mean_mask[bin*(i+1):-1])
-    gumr_comp = ma.compressed(gumr_array)
-    gucal_mean_rebin.append(ma.mean(gumr_comp))
-    gmmr_array = ma.array(gmcal_mean[bin*(i+1):-1],mask=mean_mask[bin*(i+1):-1])
-    gmmr_comp = ma.compressed(gmmr_array)
-    gmcal_mean_rebin.append(ma.mean(gmmr_comp))
-    fr_array = ma.array(freq[bin*(i+1):-1],mask=mean_mask[bin*(i+1):-1])
-    fr_comp = ma.compressed(fr_array)
-    freqs_rebin.append(ma.mean(fr_comp))
+bin = 8
+tcal_mean_rebin,tcal_mask_rebin,new_freq = fc.rebin(tcal_mean,mean_mask,freq,bin)
+gucal_mean_rebin,gucal_mask_rebin,new_freq = fc.rebin(gucal_mean,mean_mask,freq,bin)
+gmcal_mean_rebin,gmcal_mask_rebin,new_freq = fc.rebin(gmcal_mean,mean_mask,freq,bin)
+tcal_mean_rebinb,tcal_mask_rebinb,new_freq = fc.rebin(tcal_meanb,mean_maskb,freq,bin)
+gucal_mean_rebinb,gucal_mask_rebinb,new_freq = fc.rebin(gucal_meanb,mean_maskb,freq,bin)
+gmcal_mean_rebinb,gmcal_mask_rebinb,new_freq = fc.rebin(gmcal_meanb,mean_maskb,freq,bin)
+freqs_rebin = new_freq
+print freqs_rebin
 
-tcal_mean_rebin = array(tcal_mean_rebin)
-gucal_mean_rebin = array(gucal_mean_rebin)
-gmcal_mean_rebin = array(gmcal_mean_rebin)
-freqs_rebin = array(freqs_rebin)
 
-savetxt(newdir+direct+'_tcal_mean.txt',tcal_mean,delimiter=' ')
-savetxt(newdir+direct+'_gucal_mean.txt',gucal_mean,delimiter=' ')
-savetxt(newdir+direct+'_gmcal_mean.txt',gmcal_mean,delimiter=' ')
+savetxt(newdir+direct+'_tcal_mean.txt',tcal_mean_rebin,delimiter=' ')
+savetxt(newdir+direct+'_gucal_mean.txt',gucal_mean_rebin,delimiter=' ')
+savetxt(newdir+direct+'_gmcal_mean.txt',gmcal_mean_rebin,delimiter=' ')
 if date_mid[int(date_ind)-1]>0.0:
-    savetxt(newdir+direct+'_tcal_meanb.txt',tcal_meanb,delimiter=' ')
-    savetxt(newdir+direct+'_gucal_meanb.txt',gucal_meanb,delimiter=' ')
-    savetxt(newdir+direct+'_gmcal_meanb.txt',gmcal_meanb,delimiter=' ')
+    savetxt(newdir+direct+'_tcal_meanb.txt',tcal_mean_rebinb,delimiter=' ')
+    savetxt(newdir+direct+'_gucal_meanb.txt',gucal_mean_rebinb,delimiter=' ')
+    savetxt(newdir+direct+'_gmcal_meanb.txt',gmcal_mean_rebinb,delimiter=' ')
 
+minfreq = where(freqs_rebin<=minft[int(date_ind)-1])[0][-1]
+maxfreq = where(freqs_rebin<=maxft[int(date_ind)-1])[0][-1]
+minfreqb = where(freqs_rebin<=minftb[int(date_ind)-1])[0][-1]
+maxfreqb = where(freqs_rebin<=maxftb[int(date_ind)-1])[0][-1]
 
-minfreq = where(freq<=60)[0][-1]
-maxfreq = where(freq<=90)[0][-1]
+if maxfreq>minfreq:
+    tcal_fit1 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(tcal_mean_rebin[minfreq:maxfreq]),1)
+    tcal_fit2 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(tcal_mean_rebin[minfreq:maxfreq]),2)
+    tcal_fit3 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(tcal_mean_rebin[minfreq:maxfreq]),3)
+    tcal_fit4 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(tcal_mean_rebin[minfreq:maxfreq]),4)
+    tcal_fit5 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(tcal_mean_rebin[minfreq:maxfreq]),5)
+    tcal_fit6 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(tcal_mean_rebin[minfreq:maxfreq]),6)
+    print 'Johnson Noise Cal Fit Params are:',tcal_fit1
+    print 'Johnson Noise Cal Fit Params are:',tcal_fit2
+    print 'Johnson Noise Cal Fit Params are:',tcal_fit3
+    print 'Johnson Noise Cal Fit Params are:',tcal_fit4
+    print 'Johnson Noise Cal Fit Params are:',tcal_fit5
+    print 'Johnson Noise Cal Fit Params are:',tcal_fit6
 
-tcal_fit1 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_mean[minfreq:maxfreq]),1)
-tcal_fit2 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_mean[minfreq:maxfreq]),2)
-tcal_fit3 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_mean[minfreq:maxfreq]),3)
-tcal_fit4 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_mean[minfreq:maxfreq]),4)
-tcal_fit5 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_mean[minfreq:maxfreq]),5)
-tcal_fit6 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_mean[minfreq:maxfreq]),6)
-print 'Johnson Noise Cal Fit Params are:',tcal_fit1
-print 'Johnson Noise Cal Fit Params are:',tcal_fit2
-print 'Johnson Noise Cal Fit Params are:',tcal_fit3
-print 'Johnson Noise Cal Fit Params are:',tcal_fit4
-print 'Johnson Noise Cal Fit Params are:',tcal_fit5
-print 'Johnson Noise Cal Fit Params are:',tcal_fit6
+if maxfreqb>minfreqb:
+    if date_mid[int(date_ind)-1]>0.0:
+        tcal_fit1b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(tcal_mean_rebinb[minfreqb:maxfreqb]),1)
+        tcal_fit2b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(tcal_mean_rebinb[minfreqb:maxfreqb]),2)
+        tcal_fit3b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(tcal_mean_rebinb[minfreqb:maxfreqb]),3)
+        tcal_fit4b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(tcal_mean_rebinb[minfreqb:maxfreqb]),4)
+        tcal_fit5b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(tcal_mean_rebinb[minfreqb:maxfreqb]),5)
+        tcal_fit6b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(tcal_mean_rebinb[minfreqb:maxfreqb]),6)
+        print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit1b
+        print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit2b
+        print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit3b
+        print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit4b
+        print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit5b
+        print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit6b
+
+if maxfreq==minfreq:
+    tcal_fit1 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),1)
+    tcal_fit2 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),2)
+    tcal_fit3 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),3)
+    tcal_fit4 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),4)
+    tcal_fit5 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),5)
+    tcal_fit6 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),6)
+if maxfreqb==minfreqb:
+    tcal_fit1b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),1) 
+    tcal_fit2b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),2)
+    tcal_fit3b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),3)
+    tcal_fit4b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),4)
+    tcal_fit5b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),5)
+    tcal_fit6b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),6)
+
+minfreq = where(freqs_rebin<=minfgu[int(date_ind)-1])[0][-1]
+maxfreq = where(freqs_rebin<=maxfgu[int(date_ind)-1])[0][-1] 
+minfreqb = where(freqs_rebin<=minfgub[int(date_ind)-1])[0][-1] 
+maxfreqb = where(freqs_rebin<=maxfgub[int(date_ind)-1])[0][-1] 
+
+if maxfreq>minfreq:
+    gucal_fit1 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gucal_mean_rebin[minfreq:maxfreq]),1)
+    gucal_fit2 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gucal_mean_rebin[minfreq:maxfreq]),2)
+    gucal_fit3 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gucal_mean_rebin[minfreq:maxfreq]),3)
+    gucal_fit4 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gucal_mean_rebin[minfreq:maxfreq]),4)
+    gucal_fit5 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gucal_mean_rebin[minfreq:maxfreq]),5)
+    gucal_fit6 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gucal_mean_rebin[minfreq:maxfreq]),6)
+    print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit1
+    print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit2
+    print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit3
+    print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit4
+    print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit5
+    print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit6
+
+if maxfreqb>minfreqb:
+    if date_mid[int(date_ind)-1]>0.0:
+        gucal_fit1b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gucal_mean_rebinb[minfreqb:maxfreqb]),1)
+        gucal_fit2b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gucal_mean_rebinb[minfreqb:maxfreqb]),2)
+        gucal_fit3b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gucal_mean_rebinb[minfreqb:maxfreqb]),3)
+        gucal_fit4b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gucal_mean_rebinb[minfreqb:maxfreqb]),4)
+        gucal_fit5b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gucal_mean_rebinb[minfreqb:maxfreqb]),5)
+        gucal_fit6b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gucal_mean_rebinb[minfreqb:maxfreqb]),6)
+        print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit1b
+        print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit2b
+        print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit3b
+        print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit4b
+        print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit5b
+        print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit6b
+
+if maxfreq==minfreq:
+    gucal_fit1 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),1) 
+    gucal_fit2 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),2) 
+    gucal_fit3 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),3) 
+    gucal_fit4 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),4) 
+    gucal_fit5 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),5) 
+    gucal_fit6 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),6) 
+if maxfreqb==minfreqb: 
+    gucal_fit1b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),1)
+    gucal_fit2b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),2) 
+    gucal_fit3b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),3) 
+    gucal_fit4b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),4) 
+    gucal_fit5b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),5) 
+    gucal_fit6b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),6) 
+
+minfreq = where(freqs_rebin<=minfgm[int(date_ind)-1])[0][-1] 
+maxfreq = where(freqs_rebin<=maxfgm[int(date_ind)-1])[0][-1]  
+minfreqb = where(freqs_rebin<=minfgmb[int(date_ind)-1])[0][-1]  
+maxfreqb = where(freqs_rebin<=maxfgmb[int(date_ind)-1])[0][-1]  
+
+if maxfreq>minfreq:
+    gmcal_fit1 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gmcal_mean_rebin[minfreq:maxfreq]),1)
+    gmcal_fit2 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gmcal_mean_rebin[minfreq:maxfreq]),2)
+    gmcal_fit3 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gmcal_mean_rebin[minfreq:maxfreq]),3)
+    gmcal_fit4 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gmcal_mean_rebin[minfreq:maxfreq]),4)
+    gmcal_fit5 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gmcal_mean_rebin[minfreq:maxfreq]),5)
+    gmcal_fit6 = poly.polyfit(log10(freqs_rebin[minfreq:maxfreq]/70.),log10(gmcal_mean_rebin[minfreq:maxfreq]),6)
+    print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit1
+    print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit2
+    print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit3
+    print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit4
+    print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit5
+    print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit6
+
+if maxfreqb>minfreqb:
+    if date_mid[int(date_ind)-1]>0.0:
+        gmcal_fit1b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gmcal_mean_rebinb[minfreqb:maxfreqb]),1)
+        gmcal_fit2b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gmcal_mean_rebinb[minfreqb:maxfreqb]),2)
+        gmcal_fit3b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gmcal_mean_rebinb[minfreqb:maxfreqb]),3)
+        gmcal_fit4b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gmcal_mean_rebinb[minfreqb:maxfreqb]),4)
+        gmcal_fit5b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gmcal_mean_rebinb[minfreqb:maxfreqb]),5)
+        gmcal_fit6b = poly.polyfit(log10(freqs_rebin[minfreqb:maxfreqb]/70.),log10(gmcal_mean_rebinb[minfreqb:maxfreqb]),6)
+        print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit1b
+        print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit2b
+        print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit3b
+        print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit4b
+        print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit5b
+        print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit6b
+
+if maxfreq==minfreq: 
+    gmcal_fit1 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),1)
+    gmcal_fit2 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),2)
+    gmcal_fit3 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),3)
+    gmcal_fit4 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),4)
+    gmcal_fit5 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),5)
+    gmcal_fit6 = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),6)
+if maxfreqb==minfreqb:
+    gmcal_fit1b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),1)
+    gmcal_fit2b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),2)
+    gmcal_fit3b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),3)
+    gmcal_fit4b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),4)
+    gmcal_fit5b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),5)
+    gmcal_fit6b = poly.polyfit(log10(freqs_rebin/10.),log10(ones(len(freqs_rebin))),6)
+
+savetxt(newdir+direct+'_tcal_res1.txt',tcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit1)),delimiter=' ')
+savetxt(newdir+direct+'_tcal_res2.txt',tcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit2)),delimiter=' ')
+savetxt(newdir+direct+'_tcal_res3.txt',tcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit3)),delimiter=' ')
+savetxt(newdir+direct+'_tcal_res4.txt',tcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit4)),delimiter=' ')
+savetxt(newdir+direct+'_tcal_res5.txt',tcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit5)),delimiter=' ')
+savetxt(newdir+direct+'_tcal_res6.txt',tcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit6)),delimiter=' ')
+
+savetxt(newdir+direct+'_gucal_res1.txt',gucal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit1)),delimiter=' ')
+savetxt(newdir+direct+'_gucal_res2.txt',gucal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit2)),delimiter=' ')
+savetxt(newdir+direct+'_gucal_res3.txt',gucal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit3)),delimiter=' ')
+savetxt(newdir+direct+'_gucal_res4.txt',gucal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit4)),delimiter=' ')
+savetxt(newdir+direct+'_gucal_res5.txt',gucal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit5)),delimiter=' ')
+savetxt(newdir+direct+'_gucal_res6.txt',gucal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit6)),delimiter=' ')
+
+savetxt(newdir+direct+'_gmcal_res1.txt',gmcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit1)),delimiter=' ')
+savetxt(newdir+direct+'_gmcal_res2.txt',gmcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit2)),delimiter=' ')
+savetxt(newdir+direct+'_gmcal_res3.txt',gmcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit3)),delimiter=' ')
+savetxt(newdir+direct+'_gmcal_res4.txt',gmcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit4)),delimiter=' ')
+savetxt(newdir+direct+'_gmcal_res5.txt',gmcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit5)),delimiter=' ')
+savetxt(newdir+direct+'_gmcal_res6.txt',gmcal_mean_rebin-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit6)),delimiter=' ')
 
 if date_mid[int(date_ind)-1]>0.0:
-    tcal_fit1b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_meanb[minfreq:maxfreq]),1)
-    tcal_fit2b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_meanb[minfreq:maxfreq]),2)
-    tcal_fit3b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_meanb[minfreq:maxfreq]),3)
-    tcal_fit4b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_meanb[minfreq:maxfreq]),4)
-    tcal_fit5b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_meanb[minfreq:maxfreq]),5)
-    tcal_fit6b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(tcal_meanb[minfreq:maxfreq]),6)
-    print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit1b
-    print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit2b
-    print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit3b
-    print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit4b
-    print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit5b
-    print 'Johnson Noise Cal Fit Params (part 2) are:',tcal_fit6b
+    savetxt(newdir+direct+'_tcal_res1b.txt',tcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit1b)),delimiter=' ')
+    savetxt(newdir+direct+'_tcal_res2b.txt',tcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit2b)),delimiter=' ')
+    savetxt(newdir+direct+'_tcal_res3b.txt',tcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit3b)),delimiter=' ')
+    savetxt(newdir+direct+'_tcal_res4b.txt',tcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit4b)),delimiter=' ')
+    savetxt(newdir+direct+'_tcal_res5b.txt',tcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit5b)),delimiter=' ')
+    savetxt(newdir+direct+'_tcal_res6b.txt',tcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),tcal_fit6b)),delimiter=' ')
 
-gucal_fit1 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_mean[minfreq:maxfreq]),1)
-gucal_fit2 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_mean[minfreq:maxfreq]),2)
-gucal_fit3 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_mean[minfreq:maxfreq]),3)
-gucal_fit4 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_mean[minfreq:maxfreq]),4)
-gucal_fit5 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_mean[minfreq:maxfreq]),5)
-gucal_fit6 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_mean[minfreq:maxfreq]),6)
-print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit1
-print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit2
-print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit3
-print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit4
-print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit5
-print 'GSM without Mean Sub Cal Fit Params are:',gucal_fit6
-
-if date_mid[int(date_ind)-1]>0.0:
-    gucal_fit1b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_meanb[minfreq:maxfreq]),1)
-    gucal_fit2b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_meanb[minfreq:maxfreq]),2)
-    gucal_fit3b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_meanb[minfreq:maxfreq]),3)
-    gucal_fit4b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_meanb[minfreq:maxfreq]),4)
-    gucal_fit5b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_meanb[minfreq:maxfreq]),5)
-    gucal_fit6b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gucal_meanb[minfreq:maxfreq]),6)
-    print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit1b
-    print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit2b
-    print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit3b
-    print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit4b
-    print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit5b
-    print 'GSM without Mean Sub Cal Fit Params (part 2) are:',gucal_fit6b
-
-
-gmcal_fit1 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_mean[minfreq:maxfreq]),1)
-gmcal_fit2 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_mean[minfreq:maxfreq]),2)
-gmcal_fit3 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_mean[minfreq:maxfreq]),3)
-gmcal_fit4 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_mean[minfreq:maxfreq]),4)
-gmcal_fit5 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_mean[minfreq:maxfreq]),5)
-gmcal_fit6 = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_mean[minfreq:maxfreq]),6)
-print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit1
-print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit2
-print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit3
-print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit4
-print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit5
-print 'GSM with Mean Sub Cal Fit Params are:',gmcal_fit6
-
-if date_mid[int(date_ind)-1]>0.0:
-    gmcal_fit1b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_meanb[minfreq:maxfreq]),1)
-    gmcal_fit2b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_meanb[minfreq:maxfreq]),2)
-    gmcal_fit3b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_meanb[minfreq:maxfreq]),3)
-    gmcal_fit4b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_meanb[minfreq:maxfreq]),4)
-    gmcal_fit5b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_meanb[minfreq:maxfreq]),5)
-    gmcal_fit6b = poly.polyfit(log10(freq[minfreq:maxfreq]/70.),log10(gmcal_meanb[minfreq:maxfreq]),6)
-    print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit1b
-    print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit2b
-    print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit3b
-    print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit4b
-    print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit5b
-    print 'GSM with Mean Sub Cal Fit Params (part 2) are:',gmcal_fit6b
-
-
-savetxt(newdir+direct+'_tcal_res1.txt',tcal_mean-10**(poly.polyval(log10(freq/70.),tcal_fit1)),delimiter=' ')
-savetxt(newdir+direct+'_tcal_res2.txt',tcal_mean-10**(poly.polyval(log10(freq/70.),tcal_fit2)),delimiter=' ')
-savetxt(newdir+direct+'_tcal_res3.txt',tcal_mean-10**(poly.polyval(log10(freq/70.),tcal_fit3)),delimiter=' ')
-savetxt(newdir+direct+'_tcal_res4.txt',tcal_mean-10**(poly.polyval(log10(freq/70.),tcal_fit4)),delimiter=' ')
-savetxt(newdir+direct+'_tcal_res5.txt',tcal_mean-10**(poly.polyval(log10(freq/70.),tcal_fit5)),delimiter=' ')
-savetxt(newdir+direct+'_tcal_res6.txt',tcal_mean-10**(poly.polyval(log10(freq/70.),tcal_fit6)),delimiter=' ')
-
-savetxt(newdir+direct+'_gucal_res1.txt',gucal_mean-10**(poly.polyval(log10(freq/70.),gucal_fit1)),delimiter=' ')
-savetxt(newdir+direct+'_gucal_res2.txt',gucal_mean-10**(poly.polyval(log10(freq/70.),gucal_fit2)),delimiter=' ')
-savetxt(newdir+direct+'_gucal_res3.txt',gucal_mean-10**(poly.polyval(log10(freq/70.),gucal_fit3)),delimiter=' ')
-savetxt(newdir+direct+'_gucal_res4.txt',gucal_mean-10**(poly.polyval(log10(freq/70.),gucal_fit4)),delimiter=' ')
-savetxt(newdir+direct+'_gucal_res5.txt',gucal_mean-10**(poly.polyval(log10(freq/70.),gucal_fit5)),delimiter=' ')
-savetxt(newdir+direct+'_gucal_res6.txt',gucal_mean-10**(poly.polyval(log10(freq/70.),gucal_fit6)),delimiter=' ')
-
-savetxt(newdir+direct+'_gmcal_res1.txt',gmcal_mean-10**(poly.polyval(log10(freq/70.),gmcal_fit1)),delimiter=' ')
-savetxt(newdir+direct+'_gmcal_res2.txt',gmcal_mean-10**(poly.polyval(log10(freq/70.),gmcal_fit2)),delimiter=' ')
-savetxt(newdir+direct+'_gmcal_res3.txt',gmcal_mean-10**(poly.polyval(log10(freq/70.),gmcal_fit3)),delimiter=' ')
-savetxt(newdir+direct+'_gmcal_res4.txt',gmcal_mean-10**(poly.polyval(log10(freq/70.),gmcal_fit4)),delimiter=' ')
-savetxt(newdir+direct+'_gmcal_res5.txt',gmcal_mean-10**(poly.polyval(log10(freq/70.),gmcal_fit5)),delimiter=' ')
-savetxt(newdir+direct+'_gmcal_res6.txt',gmcal_mean-10**(poly.polyval(log10(freq/70.),gmcal_fit6)),delimiter=' ')
-
-if date_mid[int(date_ind)-1]>0.0:
-    savetxt(newdir+direct+'_tcal_res1b.txt',tcal_meanb-10**(poly.polyval(log10(freq/70.),tcal_fit1b)),delimiter=' ')
-    savetxt(newdir+direct+'_tcal_res2b.txt',tcal_meanb-10**(poly.polyval(log10(freq/70.),tcal_fit2b)),delimiter=' ')
-    savetxt(newdir+direct+'_tcal_res3b.txt',tcal_meanb-10**(poly.polyval(log10(freq/70.),tcal_fit3b)),delimiter=' ')
-    savetxt(newdir+direct+'_tcal_res4b.txt',tcal_meanb-10**(poly.polyval(log10(freq/70.),tcal_fit4b)),delimiter=' ')
-    savetxt(newdir+direct+'_tcal_res5b.txt',tcal_meanb-10**(poly.polyval(log10(freq/70.),tcal_fit5b)),delimiter=' ')
-    savetxt(newdir+direct+'_tcal_res6b.txt',tcal_meanb-10**(poly.polyval(log10(freq/70.),tcal_fit6b)),delimiter=' ')
-
-    savetxt(newdir+direct+'_gucal_res1b.txt',gucal_meanb-10**(poly.polyval(log10(freq/70.),gucal_fit1b)),delimiter=' ')
-    savetxt(newdir+direct+'_gucal_res2b.txt',gucal_meanb-10**(poly.polyval(log10(freq/70.),gucal_fit2b)),delimiter=' ')
-    savetxt(newdir+direct+'_gucal_res3b.txt',gucal_meanb-10**(poly.polyval(log10(freq/70.),gucal_fit3b)),delimiter=' ')
-    savetxt(newdir+direct+'_gucal_res4b.txt',gucal_meanb-10**(poly.polyval(log10(freq/70.),gucal_fit4b)),delimiter=' ')
-    savetxt(newdir+direct+'_gucal_res5b.txt',gucal_meanb-10**(poly.polyval(log10(freq/70.),gucal_fit5b)),delimiter=' ')
-    savetxt(newdir+direct+'_gucal_res6b.txt',gucal_meanb-10**(poly.polyval(log10(freq/70.),gucal_fit6b)),delimiter=' ')
+    savetxt(newdir+direct+'_gucal_res1b.txt',gucal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit1b)),delimiter=' ')
+    savetxt(newdir+direct+'_gucal_res2b.txt',gucal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit2b)),delimiter=' ')
+    savetxt(newdir+direct+'_gucal_res3b.txt',gucal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit3b)),delimiter=' ')
+    savetxt(newdir+direct+'_gucal_res4b.txt',gucal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit4b)),delimiter=' ')
+    savetxt(newdir+direct+'_gucal_res5b.txt',gucal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit5b)),delimiter=' ')
+    savetxt(newdir+direct+'_gucal_res6b.txt',gucal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gucal_fit6b)),delimiter=' ')
  
-    savetxt(newdir+direct+'_gmcal_res1b.txt',gmcal_meanb-10**(poly.polyval(log10(freq/70.),gmcal_fit1b)),delimiter=' ')
-    savetxt(newdir+direct+'_gmcal_res2b.txt',gmcal_meanb-10**(poly.polyval(log10(freq/70.),gmcal_fit2b)),delimiter=' ')
-    savetxt(newdir+direct+'_gmcal_res3b.txt',gmcal_meanb-10**(poly.polyval(log10(freq/70.),gmcal_fit3b)),delimiter=' ')
-    savetxt(newdir+direct+'_gmcal_res4b.txt',gmcal_meanb-10**(poly.polyval(log10(freq/70.),gmcal_fit4b)),delimiter=' ')
-    savetxt(newdir+direct+'_gmcal_res5b.txt',gmcal_meanb-10**(poly.polyval(log10(freq/70.),gmcal_fit5b)),delimiter=' ')
-    savetxt(newdir+direct+'_gmcal_res6b.txt',gmcal_meanb-10**(poly.polyval(log10(freq/70.),gmcal_fit6b)),delimiter=' ')
+    savetxt(newdir+direct+'_gmcal_res1b.txt',gmcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit1b)),delimiter=' ')
+    savetxt(newdir+direct+'_gmcal_res2b.txt',gmcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit2b)),delimiter=' ')
+    savetxt(newdir+direct+'_gmcal_res3b.txt',gmcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit3b)),delimiter=' ')
+    savetxt(newdir+direct+'_gmcal_res4b.txt',gmcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit4b)),delimiter=' ')
+    savetxt(newdir+direct+'_gmcal_res5b.txt',gmcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit5b)),delimiter=' ')
+    savetxt(newdir+direct+'_gmcal_res6b.txt',gmcal_mean_rebinb-10**(poly.polyval(log10(freqs_rebin/70.),gmcal_fit6b)),delimiter=' ')
 
