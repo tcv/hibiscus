@@ -12,6 +12,7 @@ from scipy import optimize
 import os
 import skrf as rf
 import sys
+sys.path.append(os.path.abspath('/home/tcv/hibiscus'))
 import file_funcs as ff
 
 # Main directories for the input and output
@@ -57,6 +58,6 @@ if int(date_ind)<15:
                     ff.writesingle(filename,new_directory,new_data,'')
 
 #For if there is no voltage information.
-            elif volt==0.0:
-                ff.writesingle(filename,new_directory,new_data,'')
+#            elif volt==0.0:
+#                ff.writesingle(filename,new_directory,new_data,'')
             

@@ -12,12 +12,13 @@ import os
 import skrf as rf
 import sys
 import matplotlib.pyplot as plt
+sys.path.append(os.path.abspath('/home/tcv/hibiscus'))
 import file_funcs as ff
 import cal_funcs as cf
 
 
 #Main directories for the input and output
-indir = '/lustre/tcv/file_rebinned_data/'
+indir = '/lustre/tcv/freq_rebinned_data/'
 outdir='/lustre/tcv/calibration_data/'
 directories = os.listdir(indir)
 
@@ -52,6 +53,10 @@ if int(date_ind)<15:
                 filename = directory+fname
 #load mask file
                 time,form,sub_mask,mask,freq,volt,temp = ff.loadsingle(filename)
+                width = 90.0/len(sub_mask)
+                freq = arange(40.+width/2,130.,width)
+                if len(freq)>len(sub_mask):
+                    freq = freq[0:-2]
                 short_mask.append(sub_mask)
                 short_mtime.append(time)        
 
@@ -69,6 +74,8 @@ for i in range(0,len(sortind)):
     sortmask[i] = short_mask[sortindm[i]]
 
 mean_short, mean_mask = cf.time_mean(sortshort,sortmask)
+mean_mask = ff.spike_flag(mean_short,mean_mask,freq,2.)
+print freq[where(mean_mask==1.0)[0]]
 
 short_array = ma.array(mean_short,mask=mean_mask)
 short_comp = ma.compressed(short_array)
@@ -76,14 +83,15 @@ freq_array = ma.array(freq,mask=mean_mask)
 freq_comp = ma.compressed(freq_array)
 
 #Need to limit the frequencies for fit just to what we are considering.
-fmin = where(freq_comp<=60.)[0][-1]
-fmax = where(freq_comp<=90.)[0][-1]
-(Fa,Fb) = polyfit(freq_comp[fmin:fmax],short_comp[fmin:fmax],1)
+fmin = where(freq_comp<=50.)[0][-1]
+fmax = where(freq_comp<=100.)[0][-1]
+print fmin, fmax
+(Fa,Fb,Fc) = polyfit(freq_comp[fmin:fmax],short_comp[fmin:fmax],2)
 
-savetxt(outdir+'June_'+date_ind+'_avg_short.txt',polyval([Fa,Fb],freq),delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_avg_short.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
 
 #Plotting Checks
-pylab.imshow(sortshort*10**9,aspect=90./len(sortind),extent=(40,130,len(sort_ind),0.0))
+pylab.imshow(sortshort*10**9,aspect=90./len(sortind),extent=(40,130,len(sortind),0.0))
 pylab.colorbar()
 pylab.title('Variation of Short over the day')
 pylab.xlabel('Frequency (MHz)')
@@ -91,11 +99,14 @@ pylab.ylabel('Time (short index)')
 pylab.savefig(outdir+'June_'+date_ind+'_short_variation',dpi=300)
 pylab.clf()
 
+pylab.scatter(freq,mean_short*10**9,c='b',edgecolor='b',label='Unfiltered Mean Data')
 pylab.plot(freq_comp,short_comp*10**9,label='Mean Data')
-pylab.plot(freq,polyval([Fa,Fb],freq)*10**9,label='Linear Fit')
+pylab.plot(freq,polyval([Fa,Fb,Fc],freq)*10**9,label='Linear Fit')
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Power (nW)')
+pylab.xlim(40,130)
+pylab.legend()
 pylab.grid()
-pylab.tile('Mean Short and Fit')
+pylab.title('Mean Short and Fit')
 pylab.savefig(outdir+'June_'+date_ind+'_short_mean',dpi=300)
 pylab.clf()

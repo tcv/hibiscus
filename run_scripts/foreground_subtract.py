@@ -15,6 +15,7 @@ import sys
 import ephem as eph
 import matplotlib.pyplot as plt
 import numpy.polynomial.polynomial as poly
+sys.path.append(os.path.abspath('/home/tcv/hibiscus'))
 import file_funcs as ff
 import eff_funcs as ef
 import cal_funcs as cf
@@ -27,18 +28,22 @@ directories = os.listdir(indir)
 
 #Setting a single day for parallel computation
 date_ind = sys.argv[1]
-minf = 60.
-maxf = 90.
+minf = 62.
+maxf = 88.
 
 #Additional files needed
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
 amp_s_file = '/home/tcv/guad_extras/WEA101_AMP_2013-04-04.s2p'
 
+#Setting rebinning scales
+timescale = 32
+freqscale = 32
+
 # Efficiency calculation
 R_ant,X_ant,F_ant = ef.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = ef.imped_skrf(amp_s_file,0.0)
 Effic = ef.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
-Eff_sm = itp.UnivariateSpline(F_ant,Effic,0.01)
+Eff_sm = itp.UnivariateSpline(F_ant,Effic,s=0.01)
 
 # Make data array
 processed_data = []
@@ -50,7 +55,7 @@ if int(date_ind)<15:
 # Based upon the naming convention for the subdirectories in the raw data
     direct = 'June'+date_ind+'_day_to_night'
     print 'Directory being analyzed is:',direct
-    directory = maindir+direct+'/'
+    directory = indir+direct+'/'
     dirlist = os.listdir(directory)
  
 #Prepping calibration data for use
@@ -60,8 +65,8 @@ if int(date_ind)<15:
     K_dgsm = loadtxt(Kdir+'June_'+date_ind+'_K_dgsm.txt')
 
 #Iterate for each file in the directory
-   for fname in dirlist:
-        if len(fname.split('_'))>=3:
+    for fname in dirlist:
+        if len(fname.split('-'))>=3:
             filename = directory+fname
 #load data file
             time,form,sub_data,mask,freq,volt,temp = ff.loadsingle(filename)
@@ -124,12 +129,12 @@ mean_sd, mean_sm = cf.time_mean(sortdata,sortmask)
 percent_masked = 100.*sum(mean_sm)/(len(mean_sm))
 print 'Percent of mean data masked', percent_masked
 
-spike_flag = ff.spike_flag(mean_sd,mean_sm,freq,5.)
+spike_flag = ff.spike_flag(mean_sd,mean_sm,freq,10.)
 for i in range(0,len(mean_sd)):
     if mean_sm[i]==1.0:
         print 'Mean Mask Frequency at:',freq[i]
     if spike_flag[i]==1.0:
-        mean_sm = 1.0
+        mean_sm[i] = 1.0
         print 'Spike Frequency at:', freq[i]    
 
 #Applying calibration data
@@ -139,10 +144,18 @@ mean_Kt = Kt*mean_sd
 mean_Kdgsm = K_dgsm*mean_sd
 mean_Kgsm = K_gsm*mean_sd
 
+#Additional Frequency Masking for calibrated data
+Kt_mask = ff.spike_flag(mean_Kt,mean_sm,freq,10.)
+Kgsm_mask = ff.spike_flag(mean_Kgsm,mean_sm,freq,10.)
+Kdgsm_mask = ff.spike_flag(mean_Kdgsm,mean_sm,freq,10.)
+print 'Percent of Kt mean data masked',100.*sum(Kt_mask)/len(Kt_mask)
+print 'Percent of Kdgsm mean data masked',100.*sum(Kdgsm_mask)/len(Kdgsm_mask)
+print 'Percent of Kgsm mean data masked',100.*sum(Kgsm_mask)/len(Kgsm_mask)
+
 #Foreground fitting - only going to do n=2 for now.
-Kt_fit, Kt_params = cf.poly_fore(mean_Kt,mean_sm,freq,minf,maxf,2)
-Kdgsm_fit,Kdgsm_params = cf.poly_fore(mean_Kdgsm,mean_sm,freq,minf,maxf,2)
-Kgsm_fit,Kgsm_params = cf.poly_fore(mean_Kgsm,mean_sm,freq,minf,maxf,2)
+Kt_fit, Kt_params = cf.poly_fore(mean_Kt,Kt_mask,freq,minf,maxf,2)
+Kdgsm_fit,Kdgsm_params = cf.poly_fore(mean_Kdgsm,Kdgsm_mask,freq,minf,maxf,2)
+Kgsm_fit,Kgsm_params = cf.poly_fore(mean_Kgsm,Kgsm_mask,freq,minf,maxf,2)
 
 #Foreground parameter comparison:
 print 'Foreground parameters for Kt are:',Kt_params
@@ -150,21 +163,37 @@ print 'Foreground parameters for Kgsm are:',Kgsm_params
 print 'Foreground parameters for Kdgsm are:',Kdgsm_params
 
 #Outputting fit and mean data
-savetxt(outdir+'June_'+date_ind+'_mean_mask.txt',mean_sm,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_Kt_mean_mask.txt',Kt_mask,delimiter=' ')
 savetxt(outdir+'June_'+date_ind+'_Kt_mean.txt',mean_Kt,delimiter=' ')
 savetxt(outdir+'June_'+date_ind+'_Kt_fit2.txt',Kt_fit,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_Kgsm_mean_mask.txt',Kgsm_mask,delimiter=' ')
 savetxt(outdir+'June_'+date_ind+'_Kgsm_mean.txt',mean_Kgsm,delimiter=' ')
 savetxt(outdir+'June_'+date_ind+'_Kgsm_fit2.txt',Kgsm_fit,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_Kdgsm_mean_mask.txt',Kdgsm_mask,delimiter=' ')
 savetxt(outdir+'June_'+date_ind+'_Kdgsm_mean.txt',mean_Kdgsm,delimiter=' ')
 savetxt(outdir+'June_'+date_ind+'_Kdgsm_fit2.txt',Kdgsm_fit,delimiter=' ')
 
+#Time variance plot
+pylab.imshow(sortdata*10**9,vmax=200,aspect=90./len(sortind),extent=(40.,130.,len(sortind),0.0))
+pylab.colorbar()
+pylab.title('Variation of Uncalibrated Data over the day (nW)')
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Time (index)')
+pylab.savefig(outdir+'June_'+date_ind+'_Antenna_variation',dpi=300)
+pylab.clf()
+
 #Comparison plot
-pylab.scatter(freq,mean_Kt,color='b',edgecolor='b',label='Kt mean')
+pylab.scatter(freq,mean_Kt,color='c',edgecolor='c',s=5,label='Kt mean') 
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_Kt,mask=Kt_mask)),c='b',edgecolor='b',s=5,label='Kt mean masked')
 pylab.plot(freq,Kt_fit,c='b',label='Kt fit')
-pylab.scatter(freq,mean_Kgsm,color='g',edgecolor='g',label='Kgsm mean')
+pylab.scatter(freq,mean_Kgsm,color='y',edgecolor='y',s=5,label='Kgsm mean') 
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kgsm_mask)),ma.compressed(ma.array(mean_Kgsm,mask=Kgsm_mask)),c='g',edgecolor='g',s=5,label='Kgsm mean masked') 
 pylab.plot(freq,Kgsm_fit,c='g',label='Kgsm fit')
-pylab.scatter(freq,mean_Kdgsm,color='r',edgecolor='r',label='Kdgsm mean')
+pylab.scatter(freq,mean_Kdgsm,color='r',edgecolor='r',s=5,label='Kdgsm mean')
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kdgsm_mask)),ma.compressed(ma.array(mean_Kdgsm,mask=Kdgsm_mask)),c='m',edgecolor='m',s=5,label='Kdgsm mean masked') 
 pylab.plot(freq,Kdgsm_fit,c='r',label='Kdgsm fit')
+pylab.xlim(40,150)
+pylab.ylim(0,1e4)
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.legend()
@@ -172,3 +201,5 @@ pylab.grid()
 pylab.title('Polynomial Fit Comparisons')
 pylab.savefig(outdir+'June_'+date_ind+'_mean_fits',dpi=300)
 pylab.clf()
+
+

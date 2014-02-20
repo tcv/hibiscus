@@ -1,5 +1,5 @@
 """
-Module to calculate the 50 Ohm spectrum for a single day of data
+Module to calculate the 100 Ohm spectrum for a single day of data
 """
 import matplotlib
 matplotlib.use('Agg')
@@ -38,7 +38,7 @@ if int(date_ind)<15:
     dirlist = os.listdir(directory)
 #Iterate for each file in the directory
     for fname in dirlist:
-        if fname.split('_')[-1]=='50ohm.dat':
+        if fname.split('_')[-1]=='open.dat':
             filename = directory+fname
 #load data file
             time,form,sub_data,mask,freq,volt,temp = ff.loadsingle(filename)
@@ -49,7 +49,7 @@ if int(date_ind)<15:
             load_data.append(sub_data)
             load_time.append(time)
         elif fname.split('_')[-1]=='mask.dat':
-            if fname.split('_')[-2]=='50ohm':
+            if fname.split('_')[-2]=='open':
                 filename = directory+fname
 #load mask file
                 time,form,sub_mask,mask,freq,volt,temp = ff.loadsingle(filename)
@@ -60,7 +60,6 @@ if int(date_ind)<15:
                 load_mask.append(sub_mask)
                 load_mtime.append(time)        
 
-print shape(freq)
 load_data = array(load_data)
 load_mask = array(load_mask)
 
@@ -75,9 +74,8 @@ for i in range(0,len(sortind)):
     sortmask[i] = load_mask[sortindm[i]]
 
 mean_load, mean_mask = cf.time_mean(sortload,sortmask)
-mean_mask = ff.spike_flag(mean_load,mean_mask,freq,2.)
+mean_mask = ff.spike_flag(mean_load,mean_mask,freq,10.)
 print freq[where(mean_mask==1.0)[0]]
-
 
 load_array = ma.array(mean_load,mask=mean_mask)
 load_comp = ma.compressed(load_array)
@@ -87,18 +85,17 @@ freq_comp = ma.compressed(freq_array)
 #Need to limit the frequencies for fit just to what we are considering.
 fmin = where(freq_comp<=50.)[0][-1]
 fmax = where(freq_comp<=100.)[0][-1]
-print fmin, fmax
 (Fa,Fb,Fc) = polyfit(freq_comp[fmin:fmax],load_comp[fmin:fmax],2)
 
-savetxt(outdir+'June_'+date_ind+'_avg_50ohm.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_avg_100ohm.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
 
 #Plotting Checks
 pylab.imshow(sortload*10**9,aspect=90./len(sortind),extent=(40,130,len(sortind),0.0))
 pylab.colorbar()
-pylab.title('Variation of 50 Ohm over the day')
+pylab.title('Variation of 100 Ohm over the day')
 pylab.xlabel('Frequency (MHz)')
-pylab.ylabel('Time (50 Ohm index)')
-pylab.savefig(outdir+'June_'+date_ind+'_50ohm_variation',dpi=300)
+pylab.ylabel('Time (100 Ohm index)')
+pylab.savefig(outdir+'June_'+date_ind+'_100ohm_variation',dpi=300)
 pylab.clf()
 
 pylab.scatter(freq,mean_load*10**9,c='b',edgecolor='b',label='Unfiltered Mean Data')
@@ -109,6 +106,6 @@ pylab.ylabel('Power (nW)')
 pylab.xlim(40,130)
 pylab.legend()
 pylab.grid()
-pylab.title('Mean 50 Ohm and Fit')
-pylab.savefig(outdir+'June_'+date_ind+'_50ohm_mean',dpi=300)
+pylab.title('Mean 100 Ohm and Fit')
+pylab.savefig(outdir+'June_'+date_ind+'_100ohm_mean',dpi=300)
 pylab.clf()

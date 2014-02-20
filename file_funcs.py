@@ -155,15 +155,15 @@ def spike_flag(data,masked,freq,percent):
     for i in range(5,len(new_comp)-5):
         group = new_comp[i-5]+new_comp[i-4]+new_comp[i-3]+new_comp[i-2]+new_comp[i-1]+new_comp[i]+new_comp[i+1]+new_comp[i+2]+new_comp[i+3]+new_comp[i+4]+new_comp[i+5]
         mean_group = group/11.
-        if new_comp[i]/mean_group>(1+percent/100):
+        if new_comp[i]/mean_group>=(1+percent/100.):
             comp_freq = new_freq[i]
-            for j in range(0,len(data)):
+            for j in range(0,len(freq)):
                 if freq[j]==comp_freq:
                     index=j
             new_mask[index]= 1.0
-        elif new_comp[i]/mean_group>1/(1+percent/100):
+        elif new_comp[i]/mean_group<=1/(1+percent/100.):
             comp_freq = new_freq[i]
-            for j in range(0,len(data)):
+            for j in range(0,len(freq)):
                 if freq[j]==comp_freq:
                     index=j
             new_mask[index]= 1.0

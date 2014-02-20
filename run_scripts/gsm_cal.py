@@ -13,6 +13,7 @@ import skrf as rf
 import sys
 import ephem as eph
 import matplotlib.pyplot as plt
+sys.path.append(os.path.abspath('/home/tcv/hibiscus'))
 import file_funcs as ff
 import eff_funcs as ef
 import cal_funcs as cf
@@ -20,7 +21,7 @@ import cal_funcs as cf
 #Main directories for the cal and input data
 indir = '/lustre/tcv/freq_rebinned_data/'
 Kdir='/lustre/tcv/calibration_data/'
-directories = os.listdir(maindir)
+directories = os.listdir(indir)
 
 #Setting a single day for parallel computation
 date_ind = sys.argv[1]
@@ -39,7 +40,7 @@ freqscale = 32
 R_ant,X_ant,F_ant = ef.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = ef.imped_skrf(amp_s_file,0.0)
 Effic = ef.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
-Eff_sm = itp.UnivariateSpline(F_ant,Effic,0.01)
+Eff_sm = itp.UnivariateSpline(F_ant,Effic,s=0.01)
 
 #GSM data rearranged to array with first index = time, second index = freq
 gsm_freq = arange(60,90,1)
@@ -59,15 +60,15 @@ if int(date_ind)<15:
 # Based upon the naming convention for the subdirectories in the raw data
     direct = 'June'+date_ind+'_day_to_night'
     print 'Directory being analyzed is:',direct
-    directory = maindir+direct+'/'
+    directory = indir+direct+'/'
     dirlist = os.listdir(directory)
  
 #Prepping short data for use
     short_data = loadtxt(Kdir+'June_'+date_ind+'_avg_short.txt')
 
 #Iterate for each file in the directory
-   for fname in dirlist:
-        if len(fname.split('_'))>=3:
+    for fname in dirlist:
+        if len(fname.split('-'))>=3:
             filename = directory+fname
 #load data file
             time,form,sub_data,mask,freq,volt,temp = ff.loadsingle(filename)
@@ -113,7 +114,7 @@ for i in range(0,len(sid_mtime)):
 
 #Frequency Masking Amount Calculation
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
-print 'Percentage of Masked Data from Frequency Masking',percent_masked
+print 'Percentage of Masked Data from Frequency Masking: ',percent_masked
 
 #Adding in Time Masking
 for i in range(0,len(freq)):
@@ -121,7 +122,7 @@ for i in range(0,len(freq)):
     sortmask[:,i] = new_mask
 
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
-print 'Percentage of Masked Data from Frequency and Time Masking',percent_masked
+print 'Percentage of Masked Data from Frequency and Time Masking: ',percent_masked
 
 #Time rebinning to match gsm binning (5 minutes)
 stack_data, stack_mask = cf.match_binning(gsm_time,freq,sorttime,sortdata,sortmask)
@@ -129,9 +130,20 @@ stack_data, stack_mask = cf.match_binning(gsm_time,freq,sorttime,sortdata,sortma
 #Only grabbing the gsm times that we have measured data for:
 lim_stack,lim_mask,lim_gsm,lim_time = cf.lim_bin(freq,stack_data,stack_mask,gsm_freq,gsm_data,gsm_time)
 
+#Adding Time Masking for rebinned data
+new_lim_mask = zeros((len(lim_mask),len(lim_mask[0])))
+for i in range(0,len(freq)):
+    new_lim_mask[:,i] = ff.timeflag(lim_stack[:,i],lim_mask[:,i],lim_time,2.,10)
+for j in range(0,len(lim_mask)):
+    if sum(new_lim_mask[j])>=len(new_lim_mask[j])/2.:
+        lim_mask[j] = ones(len(lim_mask[0]))
+
+percent_masked = 100.*sum(lim_mask)/(len(lim_mask)*len(lim_mask[0]))
+print 'Percentage of Masked rebinned data: ',percent_masked
+
 #Calculating time means of both GSM and Data
 mean_sd, mean_sm = cf.time_mean(lim_stack,lim_mask)
-gsm_mask = zeros(len(lim_gsm))
+gsm_mask = zeros((len(lim_gsm),len(lim_gsm[0])))
 mean_gsm, mean_gmask = cf.time_mean(lim_gsm,gsm_mask)
 
 #Calculating Gain (K_gsm)
@@ -149,15 +161,17 @@ for f in range(0,len(freq)):
 K_gsm = array(K_gsm)
 K_gsm = abs(K_gsm)
 f70 = where(freq<=70.)[0][-1]
-print 'K_gsm at 70 MHz is:',K_gsm[f70]
+print 'K_gsm at 70 MHz is:',K_gsm[f70,0]
+#print shape(K_gsm)
 
 savetxt(Kdir+'June_'+date_ind+'_K_gsm.txt',K_gsm,delimiter=' ')
 
 #Plot results
-pylab.plot(freq,mean_gsm,label='mean GSM Spectrum')
-pylab.plot(freq,mean_sd*K_gsm,label='mean Calibrated Spectrum')
+pylab.plot(freq,abs(mean_gsm),label='mean GSM Spectrum')
+pylab.plot(freq,mean_sd*K_gsm[:,0],label='mean Calibrated Spectrum')
 pylab.grid()
 pylab.xlim(40,130)
+pylab.ylim(0,1.5e4)
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.title('Time Averaged Signals')
@@ -165,9 +179,12 @@ pylab.legend()
 pylab.savefig(Kdir+'June_'+date_ind+'_K_gsm_mean_spectrum',dpi=300)
 pylab.clf()
 
-pylab.plot(lim_time,lim_gsm[:,f70],label='GSM time series')
-pylab.plot(lim_time,lim_stack[;,f70]*K_gsm[f70],label='Calibrated time series')
+single_data = lim_stack[:,f70]
+single_gsm = lim_gsm[:,f70]
+pylab.scatter(lim_time,single_gsm,c='b',edgecolor='b',label='GSM time series')
+pylab.scatter(lim_time,single_data*K_gsm[f70,0],c='g',edgecolor='g',label='Calibrated time series')
 pylab.xlim(0,24)
+pylab.ylim(1500,5000)
 pylab.xlabel('Local Sidereal Time (Hours)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.grid()

@@ -3,6 +3,7 @@ import pylab
 import scipy.interpolate as itp
 import numpy.ma as ma
 from scipy import optimize
+import scipy.optimize as opt
 import os
 import skrf as rf
 import ephem as eph
@@ -74,7 +75,7 @@ def lim_bin(freq,data,mask,gsm_freq,gsm_data,gsm_time):
     lim_time = []
     
     for i in range(0,len(data)):
-        if sum(stack_data[i])>0.:
+        if sum(data[i])>0.:
             lim_stack.append(data[i])
             lim_mask.append(mask[i])
             single_smooth = itp.UnivariateSpline(gsm_freq,gsm_data[i])
@@ -93,12 +94,30 @@ def time_mean(data,mask):
     """
     mean_data = []
     mean_mask = []
-    for i in range(0,len(data[0])):
-        if len(mask[:,i])==sum(mask[:,i]):
+    data = array(data)
+    mask = array(mask)
+    print shape(data),shape(mask)
+    num_time = len(mask)
+    num_freq = len(mask[0])
+    mod_mask = []
+
+    for i in range(0,num_time):
+        single_mask = mask[i]
+        if sum(single_mask)>=len(single_mask)/2.:
+            new_mask = ones(len(single_mask))
+        else:
+            new_mask = zeros(len(single_mask))
+        mod_mask.append(new_mask)
+
+    mod_mask = array(mod_mask)
+    for i in range(0,num_freq):
+        single_mask = mod_mask[:,i]
+        bad_num = sum(single_mask)
+        if num_time<=bad_num:
             mean_data.append(0.0)
             mean_mask.append(1.0)
         else:
-            single = ma.array(data[:,i],mask=mask[:,i])
+            single = ma.array(data[:,i],mask=single_mask)
             single_comp = ma.compressed(single)
             mean_data.append(ma.mean(single_comp))
             mean_mask.append(0.0)
@@ -108,7 +127,7 @@ def time_mean(data,mask):
 
     return mean_data,mean_mask
 
-def gain_calc(data,masked,gsm,K0)
+def gain_calc(data,masked,gsm,K0):
     """
     Calculates the gain using least squares for a single frequency.
     Inputs:
@@ -127,7 +146,7 @@ def gain_calc(data,masked,gsm,K0)
     
     return Kf[0]
 
-def poly_fore(data,masked,freq,minf,maxf,n)
+def poly_fore(data,masked,freq,minf,maxf,n):
     """
     Calculates a polynomial fit for data.
     Inputs:
