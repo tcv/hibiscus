@@ -18,8 +18,11 @@ import cal_funcs as cf
 
 
 #Main directories for the input and output
-indir = '/lustre/tcv/freq_rebinned_data/'
-outdir='/lustre/tcv/calibration_data/'
+#indir = '/lustre/tcv/freq_rebinned_data/'
+#outdir='/lustre/tcv/calibration_data/'
+#directories = os.listdir(indir)
+indir = '/lustre/tcv/truncated_data/'
+outdir = '/lustre/tcv/rfi_check_data/'
 directories = os.listdir(indir)
 
 #Setting a single day for parallel computation
@@ -62,6 +65,10 @@ if int(date_ind)<15:
 
 short_data = array(short_data)
 short_mask = array(short_mask)
+
+if len(short_mask)==0:
+    short_mask = zeros((len(short_data),len(short_data[0])))
+    short_mtime = short_time
 
 sortind = argsort(short_time)
 sorttime = zeros(len(short_data))

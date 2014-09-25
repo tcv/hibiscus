@@ -18,8 +18,10 @@ import cal_funcs as cf
 
 
 #Main directories for the input and output
-indir = '/lustre/tcv/freq_rebinned_data/'
-outdir='/lustre/tcv/calibration_data/'
+#indir = '/lustre/tcv/freq_rebinned_data/'
+#outdir='/lustre/tcv/calibration_data/'
+indir = '/lustre/tcv/truncated_data/'
+outdir = '/lustre/tcv/rfi_check_data/'
 directories = os.listdir(indir)
 
 #Setting a single day for parallel computation
@@ -63,6 +65,12 @@ if int(date_ind)<15:
 print shape(freq)
 load_data = array(load_data)
 load_mask = array(load_mask)
+#print shape(load_data),shape(load_mask)
+#print len(load_mask)
+
+if len(load_mask)==0:
+    load_mask = zeros((len(load_data),len(load_data[0])))
+    load_mtime = load_time
 
 sortind = argsort(load_time)
 sorttime = zeros(len(load_data))
