@@ -28,8 +28,51 @@ directories = os.listdir(indir)
 
 #Setting a single day for parallel computation
 date_ind = sys.argv[1]
-minf = 62.
-maxf = 88.
+if date_ind == '01':
+    minf = 60.
+    maxf = 90.
+elif date_ind == '02':
+    minf = 70.
+    maxf = 75.
+elif date_ind == '03':
+    minf = 60.
+    maxf = 75.
+elif date_ind == '04':
+    minf = 60.
+    maxf = 75.
+elif date_ind == '05':
+    minf = 65.
+    maxf = 70.
+elif date_ind == '06':
+    minf = 62.
+    maxf = 77.
+elif date_ind == '07':
+    minf = 62.
+    maxf = 75.
+elif date_ind == '08':
+    minf = 62.
+    maxf = 77.
+elif date_ind == '09':
+    minf = 70.
+    maxf = 75.
+elif date_ind == '10':
+    minf = 70.
+    maxf = 70.
+elif date_ind == '11':
+    minf = 70.
+    maxf = 75.
+elif date_ind == '12':
+    minf = 62.
+    maxf = 80.
+elif date_ind == '13':
+    minf = 62.
+    maxf = 77.
+elif date_ind == '14':
+    minf = 60.
+    maxf = 75.
+else:
+    minf=0.
+    maxf=0.
 
 #Additional files needed
 ant_s11_file = '/home/tcv/guad_extras/ANT_3_average.s1p'
@@ -202,4 +245,24 @@ pylab.title('Polynomial Fit Comparisons')
 pylab.savefig(outdir+'June_'+date_ind+'_mean_fits',dpi=300)
 pylab.clf()
 
+
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kdgsm_mask)),ma.compressed(ma.array(mean_Kdgsm,mask=Kdgsm_mask)),c='m',edgecolor='m',s=5,label='Kdgsm mean masked')
+pylab.plot(freq,Kdgsm_fit,c='r',label='Kdgsm fit')
+pylab.xlim(60,90)
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.ylim(0,5000)
+pylab.grid()
+pylab.savefig(outdir+'June_'+date_ind+'_Kdgsm_mean_fit',dpi=300)
+pylab.clf()
+
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_Kt,mask=Kt_mask)),c='b',edgecolor='b',s=5,label='Kt mean masked')
+pylab.plot(freq,Kt_fit,c='b',label='Kt fit')
+pylab.xlim(60,90)
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.ylim(0,5000)
+pylab.grid()
+pylab.savefig(outdir+'June_'+date_ind+'_Kt_mean_fit',dpi=300)
+pylab.clf()
 

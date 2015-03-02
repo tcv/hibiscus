@@ -37,10 +37,14 @@ R_ant,X_ant,F_ant = ef.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = ef.imped_skrf(amp_s_file,0.0)
 Effic = ef.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
 Eff_sm = itp.UnivariateSpline(F_ant,Effic,s=0.01)
-
+Eff_50 = ef.effic(50.*ones(len(F_amp)),zeros(len(F_amp)),F_amp,R_amp,X_amp,F_amp)
+Eff_50_sm = itp.UnivariateSpline(F_amp,Eff_50,s=0.01)
+Eff_100 = ef.effic(100.*ones(len(F_amp)),zeros(len(F_amp)),F_amp,R_amp,X_amp,F_amp)
+Eff_100_sm = itp.UnivariateSpline(F_amp,Eff_100,s=0.01)
 
 total_mask = 0.
 mid_mask = 0.
+spike_m = 0.
 total_sum = 0.
 
 processed_data = []
@@ -57,8 +61,16 @@ if int(date_ind)<15:
     dirlist = os.listdir(directory)
 
 #repping calibration data for use
-    short_data = loadtxt(Kdir+'June_'+date_ind+'_avg_short.txt')
-    load_data = loadtxt(Kdir+'June_'+date_ind+'_avg_50ohm.txt')
+    short_data = loadtxt(Kdir+'June_'+date_ind+'_fit_short.txt')
+    load_data = loadtxt(Kdir+'June_'+date_ind+'_fit_50ohm.txt')
+    term_data = loadtxt(Kdir+'June_'+date_ind+'_fit_100ohm.txt')
+    noise_data = loadtxt(Kdir+'June_'+date_ind+'_fit_noise.txt')
+
+    short_full = loadtxt(Kdir+'June_'+date_ind+'_avg_short.txt')
+    load_full = loadtxt(Kdir+'June_'+date_ind+'_avg_50ohm.txt')
+    term_full = loadtxt(Kdir+'June_'+date_ind+'_avg_100ohm.txt')
+    noise_full = loadtxt(Kdir+'June_'+date_ind+'_avg_noise.txt')
+
 
 #Iterate for each file in the directory
     for fname in dirlist:
@@ -70,9 +82,14 @@ if int(date_ind)<15:
                 width = 90.0/len(sub_data)
                 freq = arange(40,130.0,width)
 #basic freq flagging
-                mask = ff.flagging(sub_data,freq,3.,freqscale)
-                mid_mask = mid_mask+sum(mask)
-                total_sum = total_sum +len(mask)
+                int_mask = mask
+                int_mask = ff.flagging(sub_data,freq,2.,freqscale)
+                mid_mask = mid_mask+sum(int_mask)
+                total_sum = total_sum +len(int_mask)
+
+#adding in freq spike flagging
+                mask = ff.spike_flag(sub_data,int_mask,freq,15.)
+                spike_m = spike_m+sum(mask)
 
 #Check for nan/inf (should be nulls)
                 nandata = where(isnan(sub_data))[0]
@@ -88,6 +105,7 @@ if int(date_ind)<15:
                 processed_mtime.append(time)
 
 print 'Percent of Data Flagged without Spike Flagger:',100.*mid_mask/total_sum
+print 'Percent of Data Flagged with Spike Flagger:',100.*spike_m/total_sum
 
 #Setting up sidereal time arrays
 sid_time = []
@@ -137,19 +155,86 @@ print 'Percent of mean data masked', percent_masked
 
 #Applying calibration data
 Kt = 300./(load_data-short_data)
-mean_Kt = Kt*mean_sd
+mean_Kt = Kt*(mean_sd-short_data)*Eff_sm(freq) 
 
-Kt_mask = ff.spike_flag(mean_Kt,mean_sm,freq,10.)
+KA = (load_data-term_data)/(Eff_50_sm(freq)-4*Eff_100_sm(freq))
+Kt50 = 300./(load_data-short_data-KA*Eff_50_sm(freq))
+Kt100 = 300./(term_data-short_data-KA*4*Eff_100_sm(freq))
+
+#pylab.plot(freq,Eff_sm(freq))
+#pylab.plot(freq,Eff_50_sm(freq))
+#pylab.plot(freq,Eff_100_sm(freq))
+#pylab.plot(freq,Eff_50_sm(freq)-dP*Eff_100_sm(freq))
+#pylab.savefig(outdir+'June_'+date_ind+'_efftest',dpi=300)
+#pylab.clf()
+
+
+pylab.plot(freq,KA)
+pylab.savefig(outdir+'June_'+date_ind+'_inttest',dpi=300)
+pylab.clf()
+
+pylab.plot(freq,Kt,'b--')
+pylab.plot(freq,Kt50,'g')
+pylab.plot(freq,Kt100,'r--')
+pylab.xlim(50,100)
+pylab.xlabel('Frequency (MHz)')
+pylab.grid()
+pylab.savefig(outdir+'June_'+date_ind+ '_caltest',dpi=300)
+pylab.clf()
+
+#pylab.plot(freq,(load_data - Eff_50_sm(freq)*KA)*Kt50)
+#pylab.plot(freq,(term_data - 4*Eff_100_sm(freq)*KA)*Kt50)
+
+pylab.plot(freq,load_full*Kt,'b')
+#ylab.plot(freq,Eff_50_sm(freq)*KA)
+#ylab.plot(freq,Eff_100_sm(freq)*4*KA)
+pylab.plot(freq,term_full*Kt,'r')
+pylab.plot(freq, (load_full - Eff_50_sm(freq)*KA)*Kt50,'c')
+pylab.plot(freq,(term_full-Eff_100_sm(freq)*4*KA)*Kt50,'m--')
+pylab.plot(freq,short_full*Kt,'g')
+pylab.plot(freq,short_full*Kt50,'y')
+pylab.legend(('50 Omega','100 Omega','50 Omega w/ PZ','100 Omega w/ PZ','Short','Short w/ PZ'))
+pylab.ylabel('Temperature (Kelvin)')
+pylab.ylim(0,1100)
+pylab.xlim(60,100)
+pylab.xlabel('Frequency (MHz)')
+pylab.grid()
+pylab.savefig(outdir+'June_'+date_ind+'_comp_test',dpi=300)
+pylab.clf()
+
+fmin = where(freq<=60.)[0][-1]
+fmax = where(freq<=100.)[0][-1]
+old_avg = ma.mean(Kt[fmin:fmax]*short_full[fmin:fmax])
+old_std = ma.std(Kt[fmin:fmax]*short_full[fmin:fmax])
+new_avg = ma.mean(Kt50[fmin:fmax]*short_full[fmin:fmax])
+new_std = ma.std(Kt50[fmin:fmax]*short_full[fmin:fmax])
+
+mean_diff = ma.mean(Kt[fmin:fmax]*short_data[fmin:fmax]-Kt50[fmin:fmax]*short_data[fmin:fmax])
+std_diff = ma.std(Kt[fmin:fmax]*short_data[fmin:fmax]-Kt50[fmin:fmax]*short_data[fmin:fmax])
+
+print 'Old Avg Short is: ', old_avg, ' Kelvin'
+print 'Old Short STD is: ', old_std, ' Kelvin'
+print 'New Avg Short is: ', new_avg, ' Kelvin'
+print 'New Short STD is: ', new_std, ' Kelvin'
+print 'Avg Short Diff is: ', mean_diff, ' Kelvin'
+print 'STD Short Diff is: ', std_diff, ' Kelvin'
+
+f70 = where(freq<=70.)[0][-1]
+print 'Old 70 MHz Short is: ', Kt[f70]*short_data[f70],' Kelvin'
+print 'New 70 MHz Short is: ', Kt50[f70]*short_data[f70],' Kelvin'
+
+
+Kt_mask = ff.spike_flag(mean_Kt,mean_sm,freq,15.)
 print 'Percent of Kt mean data masked',100.*sum(Kt_mask)/len(Kt_mask)
 
-pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_sd,mask=Kt_mask)))
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_sd*1.e9,mask=Kt_mask)))
 pylab.xlim(60,120)
 pylab.xlabel('Frequency (MHz)')
-pylab.ylabel('Data before calibration')
-pylab.ylim(0,6e-8)
+pylab.ylabel('Power (nW)')
+pylab.ylim(0,40)
 pylab.grid()
-pylab.title('Time Mean without calibration')
-#pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_spectrum',dpi=300)
+#pylab.title('Time Mean without calibration')
+pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_spectrum',dpi=300)
 pylab.clf()
 
 pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_Kt,mask=Kt_mask)))
@@ -158,7 +243,7 @@ pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.ylim(0,6e3)
 pylab.grid()
-pylab.title('Time Mean with JNC calibration')
+#pylab.title('Time Mean with JNC calibration')
 pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_spectrum',dpi=300)
 pylab.clf()
 
@@ -166,36 +251,205 @@ pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mea
 pylab.xlim(80,100)
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
-pylab.ylim(1e3,3e3)
+pylab.ylim(0.5e3,3e3)
 pylab.grid()
-pylab.title('Time Mean with JNC calibration')
+#pylab.title('Time Mean with JNC calibration')
 pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_spectrum_zoom',dpi=300)
+pylab.clf()
+
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_Kt,mask=Kt_mask)),c='b')
+pylab.plot(freq,load_data*Kt,'g--')
+pylab.plot(freq,short_data*Kt,'r--')
+pylab.legend(('Sky','50 Ohm Load','Short'))
+pylab.xlim(60,100)
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.ylim(0,6e3)
+pylab.grid()
+#pylab.title('Time Mean with JNC calibration')
+pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_spectrum_ref',dpi=300)
+
+pylab.ylim(0,1.1e4)
+pylab.plot(freq,term_data*Kt,'c--')
+pylab.plot(freq,noise_data*Kt,'m--')
+pylab.legend(('Sky','50 Ohm Load','Short','100 Ohm Load','Noise Source')) 
+pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_spectrum_full_ref',dpi=300)
+pylab.clf()
+
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_sd*1.e9,mask=Kt_mask)),c='b')
+pylab.plot(freq,load_data*1.e9,'g--') 
+pylab.plot(freq,short_data*1.e9,'r--') 
+pylab.legend(('Sky','50 Ohm Load','Short')) 
+pylab.xlim(60,100) 
+pylab.xlabel('Frequency (MHz)') 
+pylab.ylabel('Power (nW)') 
+pylab.ylim(0,60) 
+pylab.grid() 
+#pylab.title('Time Mean with JNC calibration') 
+pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_spectrum_ref',dpi=300)
+
+pylab.ylim(0,60)
+pylab.plot(freq,term_data*1.e9,'c--')
+pylab.plot(freq,noise_data*1.e9,'m--')
+pylab.legend(('Sky','50 Ohm Load','Short','100 Ohm Load','Noise Source'))
+pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_spectrum_full_ref',dpi=300)
+
+pylab.clf() 
+
+pylab.plot(freq,load_data*1.e9,'g--') 
+#pylab.scatter(freq,load_full*1.e9,c='g',edgecolor='g',s=3)
+pylab.plot(freq,short_data*1.e9,'r--')
+pylab.xlim(60,100) 
+pylab.xlabel('Frequency (MHz)') 
+pylab.ylabel('Power Fit (nW)') 
+pylab.ylim(0,5) 
+pylab.grid() 
+pylab.plot(freq,term_data*1.e9,'c--')
+pylab.legend(('50 Ohm Load','Short','100 Ohm Load'))
+pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_ref_spectrum',dpi=300)
+
+pylab.scatter(freq,load_full*1.e9,c='g',edgecolor='g',s=3) 
+pylab.scatter(freq,short_full*1.e9,c='r',edgecolor='r',s=3) 
+pylab.scatter(freq,term_full*1.e9,c='c',edgecolor='c',s=3) 
+pylab.legend()
+pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_ref_spectrum_data',dpi=300) 
+pylab.clf()
+
+pylab.plot(freq,load_data*Kt,'g--')  
+pylab.plot(freq,short_data*Kt,'r--') 
+pylab.xlim(60,100)  
+pylab.xlabel('Frequency (MHz)')  
+pylab.ylabel('Temperature (Kelvin)')  
+pylab.ylim(0,1000)   
+pylab.grid()  
+pylab.plot(freq,term_data*Kt,'c--')
+pylab.legend(('50 Ohm Load','Short','100 Ohm Load'))
+pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_ref_spectrum',dpi=300)
+
+pylab.scatter(freq,load_full*Kt,c='g',edgecolor='g',s=3)
+pylab.scatter(freq,short_full*Kt,c='r',edgecolor='r',s=3)
+pylab.scatter(freq,term_full*Kt,c='c',edgecolor='c',s=3)
+pylab.legend() 
+pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_ref_spectrum_data',dpi=300)
+
+pylab.clf()
+
+pylab.plot(freq,load_data*Kt,'g--')
+pylab.plot(freq,load_data*Kt50,'k')
+pylab.plot(freq,short_data*Kt,'r--')
+pylab.plot(freq,short_data*Kt50,'m')
+pylab.xlim(60,100)
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Temperature (Kelvin)')
+pylab.ylim(0,1000)
+pylab.grid()
+pylab.plot(freq,term_data*Kt,'c--')
+pylab.plot(freq,term_data*Kt50,'b')
+#pylab.legend(('50 Ohm Load','Short','100 Ohm Load'))
+pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_ref_spectrum_comp',dpi=300)
+ 
+#pylab.scatter(freq,load_full*Kt,c='g',edgecolor='g',s=3)
+#pylab.scatter(freq,short_full*Kt,c='r',edgecolor='r',s=3)
+#pylab.scatter(freq,term_full*Kt,c='c',edgecolor='c',s=3)
+#pylab.legend()
+#pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_ref_spectrum_data',dpi=300)
+ 
+pylab.clf()
+
+
+fmin = where(freq<=60.)[0][-1]
+fmax = where(freq<=120.)[0][-1]
+
+pylab.imshow(sortdata[:,fmin:fmax]*1e9,vmin=0,vmax=60,aspect=60./(sorttime[-1]-sorttime[0]),extent=(60,120,sorttime[-1],sorttime[0]))
+pylab.colorbar() 
+pylab.title('Measured Antenna Power (nW) ') 
+pylab.xlabel('Frequency (MHz)') 
+pylab.ylabel('Sidereal Time (Hours)') 
+pylab.savefig(outdir+'June_'+date_ind+'_unmasked_uncal_waterfall',dpi=300)
+pylab.clf() 
+
+ 
+fmin = where(freq<=70.)[0][-1]
+pylab.scatter(ma.compressed(ma.array(sorttime,mask=sortmask[:,fmin])),ma.compressed(ma.array(sortdata[:,fmin]*1e9,mask=sortmask[:,fmin])),c='b',edgecolor='b',s=3)
+pylab.xlim(0,24)
+pylab.xlabel('Sidereal Time (Hours)')
+pylab.ylim(0,60)
+pylab.ylabel('Signal (nW)')
+pylab.savefig(outdir+'June_'+date_ind+'_time_series_uncal_70mhz',dpi=300)
 pylab.clf()
 
 
 fmin = where(freq<=60.)[0][-1]
 fmax = where(freq<=120.)[0][-1]
 for i in range(0,len(sortind)):
-    sortdata[i] = sortdata[i]*Kt
+    sortdata[i] = (sortdata[i]-short_data)*Kt*Eff_sm(freq)
 
-pylab.imshow(sortdata[:,fmin:fmax],vmin=0,vmax=6e3,aspect=60./len(sortind),extent=(60,120,len(sortind),0.0))
+pylab.imshow(sortdata[:,fmin:fmax],vmin=0,vmax=6e3,aspect=60./(sorttime[-1]-sorttime[0]),extent=(60,120,sorttime[-1],sorttime[0]))
 pylab.colorbar()
-pylab.title('Variation of data over the day (Kelvin)')
+pylab.title('Measured Sky Temperature (Kelvin)')
 pylab.xlabel('Frequency (MHz)')
-pylab.ylabel('Time (sample index)')
+pylab.ylabel('Sidereal Time (Hours)')
 pylab.savefig(outdir+'June_'+date_ind+'_unmasked_cal_waterfall',dpi=300)
 pylab.clf()
+
+fmin2 = where(freq<=85.)[0][-1]
+fmax2 = where(freq<=100.)[0][-1]
+pylab.imshow(sortdata[:,fmin2:fmax2],vmin=1000,vmax=3e3,aspect=15./(sorttime[-1]-sorttime[0]),extent=(85,100,sorttime[-1],sorttime[0]))
+pylab.colorbar()
+pylab.title('Measured Sky Temperature (Kelvin)')
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Sidereal Time (Hours)')
+pylab.savefig(outdir+'June_'+date_ind+'_unmasked_cal_waterfall_FM',dpi=300)
+pylab.clf()
+
 
 for i in range(0,len(sortind)):
     for j in range(0,len(freq)):
         if sortmask[i,j]==1:
             sortdata[i,j] = 0
 
-pylab.imshow(sortdata[:,fmin:fmax],vmin=0,vmax=6e3,aspect=60./len(sortind),extent=(60,120,len(sortind),0.0))
+#pylab.imshow(sortdata[:,fmin:fmax]*1.e9,vmin=0,vmax=60,aspect=60./(sorttime[-1]-sorttime[0]),extent=(60,120,sorttime[-1],sorttime[0]))
+#pylab.colorbar()
+#pylab.title('Measured Antenna Power (nW), masked==0')
+#pylab.xlabel('Frequency (MHz)')
+#pylab.ylabel('Sidereal Time (Hours)')
+#pylab.savefig(outdir+'June_'+date_ind+'_masked_uncal_waterfall',dpi=300)
+#pylab.clf()
+
+pylab.imshow(sortdata[:,fmin:fmax],vmin=0,vmax=6e3,aspect=60./(sorttime[-1]-sorttime[0]),extent=(60,120,sorttime[-1],sorttime[0]))
 pylab.colorbar() 
-pylab.title('Variation of data over the day (Kelvin), masked data == zeros')
+pylab.title('Measured Sky Temperature (Kelvin), masked==0')
 pylab.xlabel('Frequency (MHz)')
-pylab.ylabel('Time (sample index)')
+pylab.ylabel('Sidereal Time (Hours)')
 pylab.savefig(outdir+'June_'+date_ind+'_masked_cal_waterfall',dpi=300)
 pylab.clf()
+
+fmin2 = where(freq<=85.)[0][-1]
+fmax2 = where(freq<=100.)[0][-1]
+pylab.imshow(sortdata[:,fmin2:fmax2],vmin=1000,vmax=3e3,aspect=15./(sorttime[-1]-sorttime[0]),extent=(85,100,sorttime[-1],sorttime[0]))
+pylab.colorbar()
+pylab.title('Measured Sky Temperature (Kelvin), masked==0')
+pylab.xlabel('Frequency (MHz)')
+pylab.ylabel('Sidereal Time (Hours)')
+pylab.savefig(outdir+'June_'+date_ind+'_masked_waterfall_FM',dpi=300)
+pylab.clf()
+
+fmin3 = where(freq<=95.)[0][-1] 
+fmax3 = where(freq<=115.)[0][-1] 
+pylab.imshow(sortdata[:,fmin3:fmax3],vmin=1500,vmax=4.5e3,aspect=20./(sorttime[-1]-sorttime[0]),extent=(95,115,sorttime[-1],sorttime[0]))
+pylab.colorbar() 
+pylab.title('Measured Sky Temperature(Kelvin), masked==0')
+pylab.xlabel('Frequency (MHz)') 
+pylab.ylabel('Sidereal Time (Hours)') 
+pylab.savefig(outdir+'June_'+date_ind+'_masked_waterfall_RFI',dpi=300)
+pylab.clf()
+
+fmin = where(freq<=70.)[0][-1]
+pylab.scatter(ma.compressed(ma.array(sorttime,mask=sortmask[:,fmin])),ma.compressed(ma.array(sortdata[:,fmin],mask=sortmask[:,fmin])),c='b',edgecolor='b',s=3)
+pylab.xlim(0,24) 
+pylab.xlabel('Sidereal Time (Hours)') 
+pylab.ylim(0,6e3)
+pylab.ylabel('Temperature (Kelvin)')
+pylab.savefig(outdir+'June_'+date_ind+'_time_series_cal_70mhz',dpi=300)
+pylab.clf() 
 

@@ -1,6 +1,5 @@
 """
-Module to remove foreground signal using polynomial fitting
-for a single day of data. 
+Module to combine signals from multple days of data. 
 """
 import matplotlib
 matplotlib.use('Agg')

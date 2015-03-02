@@ -98,12 +98,13 @@ fmax = where(freq_comp<=100.)[0][-1]
 print fmin, fmax
 (Fa,Fb,Fc) = polyfit(freq_comp[fmin:fmax],load_comp[fmin:fmax],2)
 
-savetxt(outdir+'June_'+date_ind+'_avg_50ohm.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_avg_50ohm.txt',mean_load,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_fit_50ohm.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
 
 #Plotting Checks
 pylab.imshow(sortload*10**9,aspect=90./len(sortind),extent=(40,130,len(sortind),0.0))
 pylab.colorbar()
-pylab.title('Variation of 50 Ohm over the day')
+#pylab.title('Variation of 50 Ohm over the day')
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Time (50 Ohm index)')
 pylab.savefig(outdir+'June_'+date_ind+'_50ohm_variation',dpi=300)
@@ -117,6 +118,6 @@ pylab.ylabel('Power (nW)')
 pylab.xlim(40,130)
 pylab.legend()
 pylab.grid()
-pylab.title('Mean 50 Ohm and Fit')
+#pylab.title('Mean 50 Ohm and Fit')
 pylab.savefig(outdir+'June_'+date_ind+'_50ohm_mean',dpi=300)
 pylab.clf()

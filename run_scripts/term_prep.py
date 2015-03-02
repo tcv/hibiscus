@@ -18,8 +18,10 @@ import cal_funcs as cf
 
 
 #Main directories for the input and output
-indir = '/lustre/tcv/freq_rebinned_data/'
-outdir='/lustre/tcv/calibration_data/'
+#indir = '/lustre/tcv/freq_rebinned_data/'
+#outdir='/lustre/tcv/calibration_data/'
+indir = '/lustre/tcv/truncated_data/'
+outdir = '/lustre/tcv/rfi_check_data/'
 directories = os.listdir(indir)
 
 #Setting a single day for parallel computation
@@ -63,6 +65,10 @@ if int(date_ind)<15:
 load_data = array(load_data)
 load_mask = array(load_mask)
 
+if len(load_mask)==0:
+    load_mask = zeros((len(load_data),len(load_data[0])))
+    load_mtime = load_time
+
 sortind = argsort(load_time)
 sorttime = zeros(len(load_data))
 sortload = zeros((len(load_data),len(load_data[0])))
@@ -74,7 +80,7 @@ for i in range(0,len(sortind)):
     sortmask[i] = load_mask[sortindm[i]]
 
 mean_load, mean_mask = cf.time_mean(sortload,sortmask)
-mean_mask = ff.spike_flag(mean_load,mean_mask,freq,10.)
+mean_mask = ff.spike_flag(mean_load,mean_mask,freq,2.)
 print freq[where(mean_mask==1.0)[0]]
 
 load_array = ma.array(mean_load,mask=mean_mask)
@@ -87,12 +93,13 @@ fmin = where(freq_comp<=50.)[0][-1]
 fmax = where(freq_comp<=100.)[0][-1]
 (Fa,Fb,Fc) = polyfit(freq_comp[fmin:fmax],load_comp[fmin:fmax],2)
 
-savetxt(outdir+'June_'+date_ind+'_avg_100ohm.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_avg_100ohm.txt',mean_load,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_fit_100ohm.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
 
 #Plotting Checks
 pylab.imshow(sortload*10**9,aspect=90./len(sortind),extent=(40,130,len(sortind),0.0))
 pylab.colorbar()
-pylab.title('Variation of 100 Ohm over the day')
+#pylab.title('Variation of 100 Ohm over the day')
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Time (100 Ohm index)')
 pylab.savefig(outdir+'June_'+date_ind+'_100ohm_variation',dpi=300)
@@ -106,6 +113,6 @@ pylab.ylabel('Power (nW)')
 pylab.xlim(40,130)
 pylab.legend()
 pylab.grid()
-pylab.title('Mean 100 Ohm and Fit')
+#pylab.title('Mean 100 Ohm and Fit')
 pylab.savefig(outdir+'June_'+date_ind+'_100ohm_mean',dpi=300)
 pylab.clf()

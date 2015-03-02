@@ -11,7 +11,7 @@ import data_analysis_funcs as fc
 import skrf as rf
 import sys
 
-maindir = '/lustre/tcv/mean_cal_data/'
+maindir = '/lustre/tcv/mean_cal_data_old/'
 anat_resid = loadtxt('/home/tcv/guad_extras/combined_residuals.dat')
 th1 = loadtxt('/home/tcv/guad_extras/theory_one.dat')
 th2 = loadtxt('/home/tcv/guad_extras/theory_two.dat')
@@ -891,8 +891,8 @@ pylab.errorbar(posf_tres2m,poslog_tres2m,poslog_tres2s,ecolor='b',elw=8,fmt=None
 pylab.errorbar(negf_tres2m,neglog_tres2m,neglog_tres2s,ecolor='b',elw=8,fmt=None)
 pylab.errorbar(posf_gmres2m-0.1,poslog_gmres2m,poslog_gmres2s,elw=8,ecolor='r',fmt=None)
 pylab.errorbar(negf_gmres2m-0.1,neglog_gmres2m,neglog_gmres2s,elw=8,ecolor='r',fmt=None)
-pylab.errorbar(pos_af,pos_am,pos_as,elw=8,ecolor='g',fmt=None)
-pylab.errorbar(neg_af,neg_am,neg_as,elw=8,ecolor='g',fmt=None)
+#pylab.errorbar(pos_af,pos_am,pos_as,elw=8,ecolor='g',fmt=None)
+#pylab.errorbar(neg_af,neg_am,neg_as,elw=8,ecolor='g',fmt=None)
 for i in range(0,len(posaf_tres2m)):
     pylab.annotate("",xy=(posaf_tres2m[i],posarr_tres2m[i]-posdel_tres2m[i]),xytext=(posaf_tres2m[i],posarr_tres2m[i]),arrowprops=dict(arrowstyle="->",color='b'),)
 for i in range(0,len(negaf_tres2m)):
@@ -901,17 +901,17 @@ for i in range(0,len(posaf_gmres2m)):
     pylab.annotate("",xy=(posaf_gmres2m[i]-0.1,posarr_gmres2m[i]-posdel_gmres2m[i]),xytext=(posaf_gmres2m[i]-0.1,posarr_gmres2m[i]),arrowprops=dict(arrowstyle="->",color='r'),)
 for i in range(0,len(negaf_gmres2m)):
     pylab.annotate("",xy=(negaf_gmres2m[i]-0.1,negarr_gmres2m[i]-negdel_gmres2m[i]),xytext=(negaf_gmres2m[i]-0.1,negarr_gmres2m[i]),arrowprops=dict(arrowstyle="->",color='r'),)
-for i in range(0,len(pos_arf)):
-    pylab.annotate("",xy=(pos_arf[i],pos_arr[i]-pos_del[i]),xytext=(pos_arf[i],pos_arr[i]),arrowprops=dict(arrowstyle="->",color='g'),)
-pylab.scatter(pos_af,pos_am,c='g',edgecolor='g',s=20,marker='o') 
-for i in range(0,len(neg_arf)):
-    pylab.annotate("",xy=(neg_arf[i],neg_arr[i]-neg_del[i]),xytext=(neg_arf[i],neg_arr[i]),arrowprops=dict(arrowstyle="->",color='g'),)
+#for i in range(0,len(pos_arf)):
+#    pylab.annotate("",xy=(pos_arf[i],pos_arr[i]-pos_del[i]),xytext=(pos_arf[i],pos_arr[i]),arrowprops=dict(arrowstyle="->",color='g'),)
+#pylab.scatter(pos_af,pos_am,c='g',edgecolor='g',s=20,marker='o') 
+#for i in range(0,len(neg_arf)):
+#    pylab.annotate("",xy=(neg_arf[i],neg_arr[i]-neg_del[i]),xytext=(neg_arf[i],neg_arr[i]),arrowprops=dict(arrowstyle="->",color='g'),)
 pylab.scatter(posf_tres2m,poslog_tres2m,c='b',edgecolor='b',s=30,marker='o')
 pylab.scatter(negf_tres2m,neglog_tres2m,c='b',edgecolor='b',s=30,marker='s')
 pylab.scatter(posf_gmres2m-0.1,poslog_gmres2m,c='r',edgecolor='r',s=30,marker='o')
 pylab.scatter(negf_gmres2m-0.1,neglog_gmres2m,c='r',edgecolor='r',s=30,marker='s')
-pylab.scatter(pos_af,pos_am,c='g',edgecolor='g',s=30,marker='o') 
-pylab.scatter(neg_af,neg_am,c='g',edgecolor='g',s=30,marker='s') 
+#pylab.scatter(pos_af,pos_am,c='g',edgecolor='g',s=30,marker='o') 
+#pylab.scatter(neg_af,neg_am,c='g',edgecolor='g',s=30,marker='s') 
 pylab.plot(th1f,th1m,'k-.')
 pylab.plot(th2f,th2m,'k--')
 pylab.plot(th3f,th3m,'k')

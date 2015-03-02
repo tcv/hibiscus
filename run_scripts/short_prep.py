@@ -95,12 +95,13 @@ fmax = where(freq_comp<=100.)[0][-1]
 print fmin, fmax
 (Fa,Fb,Fc) = polyfit(freq_comp[fmin:fmax],short_comp[fmin:fmax],2)
 
-savetxt(outdir+'June_'+date_ind+'_avg_short.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_avg_short.txt',mean_short,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_fit_short.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
 
 #Plotting Checks
 pylab.imshow(sortshort*10**9,aspect=90./len(sortind),extent=(40,130,len(sortind),0.0))
 pylab.colorbar()
-pylab.title('Variation of Short over the day')
+#pylab.title('Variation of Short over the day')
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Time (short index)')
 pylab.savefig(outdir+'June_'+date_ind+'_short_variation',dpi=300)
@@ -114,6 +115,6 @@ pylab.ylabel('Power (nW)')
 pylab.xlim(40,130)
 pylab.legend()
 pylab.grid()
-pylab.title('Mean Short and Fit')
+#pylab.title('Mean Short and Fit')
 pylab.savefig(outdir+'June_'+date_ind+'_short_mean',dpi=300)
 pylab.clf()
