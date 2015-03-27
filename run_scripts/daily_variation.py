@@ -43,6 +43,13 @@ R_ant,X_ant,F_ant = ef.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = ef.imped_skrf(amp_s_file,0.0)
 Effic = ef.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
 Eff_sm = itp.UnivariateSpline(F_ant,Effic,s=0.01)
+Z_ant = sqrt(R_ant**2+X_ant**2)
+Z_ant_sm = itp.UnivariateSpline(F_ant,Z_ant,s=0.01)
+Eff_50 = ef.effic(50.*ones(len(F_amp)),zeros(len(F_amp)),F_amp,R_amp,X_amp,F_amp)
+Eff_50_sm = itp.UnivariateSpline(F_amp,Eff_50,s=0.01)
+Eff_100 = ef.effic(100.*ones(len(F_amp)),zeros(len(F_amp)),F_amp,R_amp,X_amp,F_amp)
+Eff_100_sm = itp.UnivariateSpline(F_amp,Eff_100,s=0.01)
+
 
 #GSM data rearranged to array with first index = time, second index = freq
 gsm_freq = arange(60,90,1)
@@ -66,7 +73,13 @@ if int(date_ind)<15:
     dirlist = os.listdir(directory)
  
 #Prepping short data for use
-    short_data = loadtxt(Kdir+'June_'+date_ind+'_avg_short.txt')
+    short_data = loadtxt(Kdir+'June_'+date_ind+'_fit_short.txt')
+    short_full = loadtxt(Kdir+'June_'+date_ind+'_avg_short.txt')
+    load_data = loadtxt(Kdir+'June_'+date_ind+'_fit_50ohm.txt')
+    term_data = loadtxt(Kdir+'June_'+date_ind+'_fit_100ohm.txt')
+    load_full = loadtxt(Kdir+'June_'+date_ind+'_avg_50ohm.txt')
+    term_full = loadtxt(Kdir+'June_'+date_ind+'_avg_100ohm.txt')
+
 
 #Iterate for each file in the directory
     for fname in dirlist:
@@ -76,6 +89,9 @@ if int(date_ind)<15:
             time,form,sub_data,mask,freq,volt,temp = ff.loadsingle(filename)
             width = 90.0/len(sub_data)
             freq = arange(40.+width/2,130.,width)
+            KA = (load_data-term_data)/(Eff_50_sm(freq)-4*Eff_100_sm(freq))
+            PZ = KA*(Z_ant_sm(freq)**2)*Eff_sm(freq)/50.**2
+
             if len(freq)>len(sub_data):
                 freq = freq[0:-2]
             if fname.split('_')[-1]=='mask.dat':
@@ -143,14 +159,32 @@ for j in range(0,len(lim_mask)):
 percent_masked = 100.*sum(lim_mask)/(len(lim_mask)*len(lim_mask[0]))
 print 'Percentage of Masked rebinned data: ',percent_masked
 
-load_data = loadtxt(Kdir+'June_'+date_ind+'_avg_50ohm.txt')
+#load_data = loadtxt(Kdir+'June_'+date_ind+'_avg_50ohm.txt')
 K_dgsm = loadtxt(Kdir+'June_'+date_ind+'_K_dgsm.txt')
-Kt = 300./(load_data-short_data)
+#Kt = 300./(load_data-short_data)
+Kt = 300./(load_data-short_data-KA*Eff_50_sm(freq))
+fmin = where(freq<=50.)[0][-1]
+fmax = where(freq<=100.)[0][-1]
+print fmax-fmin+1
+Kt_cal = zeros((len(lim_stack),fmax-fmin+1))
+Kdgsm_cal = zeros((len(lim_stack),fmax-fmin+1))
+data_mask = zeros((len(lim_stack),fmax-fmin+1))
+for i in range(fmin,fmax+1):
+    single_data = lim_stack[:,i]
+    Kt_cal[:,i-fmin] = Kt[i]*single_data
+    Kdgsm_cal[:,i-fmin] = K_dgsm[i]*single_data
+    single_mask = lim_mask[:,i]
+    data_mask[:,i-fmin] = single_mask
+
+savetxt(outdir+'June_'+date_ind+'_Kdgsm_full_time_series.txt',Kdgsm_cal,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_Kt_full_time_series.txt',Kt_cal,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_mask_full_time_series.txt',data_mask,delimiter=' ')
 
 f70 = where(freq<=70.)[0][-1]
 single_data = lim_stack[:,f70]
+single_mask = lim_mask[:,f70]
  
-pylab.scatter(lim_time,single_data*K_dgsm[f70],c='g',edgecolor='g',s=5,label='Calibrated time series')
+pylab.scatter(ma.compressed(ma.array(lim_time,mask=single_mask)),ma.compressed(ma.array(single_data*K_dgsm[f70],mask=single_mask)),c='g',edgecolor='g',s=5,label='Calibrated time series')
 pylab.xlim(0,24)
 pylab.ylim(0,6000)
 pylab.xlabel('Local Sidereal Time (Hours)')
@@ -160,7 +194,7 @@ pylab.title('Time Dependence at 70 MHz')
 pylab.savefig(outdir+'June_'+date_ind+'_Kdgsm_time_series',dpi=300)
 pylab.clf()
 
-pylab.scatter(lim_time,single_data*Kt[f70],c='g',edgecolor='g',s=5)
+pylab.scatter(ma.compressed(ma.array(lim_time,mask=single_mask)),ma.compressed(ma.array(single_data*Kt[f70],mask=single_mask)),c='g',edgecolor='g',s=5)
 pylab.xlim(0,24) 
 pylab.ylim(0,6000) 
 pylab.xlabel('Local Sidereal Time (Hours)') 
@@ -170,7 +204,7 @@ pylab.title('Time Dependence at 70 MHz')
 pylab.savefig(outdir+'June_'+date_ind+'_Kt_time_series',dpi=300) 
 pylab.clf() 
 
-savetxt(outdir+'June_'+date_ind+'_Kdgsm_time_series.txt',single_data*K_dgsm[f70],delimiter=' ')
-savetxt(outdir+'June_'+date_ind+'_Kt_time_series.txt',single_data*Kt[f70],delimiter=' ')
-savetxt(outdir+'June_'+date_ind+'_time_indices.txt',lim_time,delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_Kdgsm_time_series.txt',ma.compressed(ma.array(single_data*K_dgsm[f70],mask=single_mask)),delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_Kt_time_series.txt',ma.compressed(ma.array(single_data*Kt[f70],mask=single_mask)),delimiter=' ')
+savetxt(outdir+'June_'+date_ind+'_time_indices.txt',ma.compressed(ma.array(lim_time,mask=single_mask)),delimiter=' ')
 

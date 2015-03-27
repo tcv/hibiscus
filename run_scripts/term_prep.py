@@ -18,10 +18,10 @@ import cal_funcs as cf
 
 
 #Main directories for the input and output
-#indir = '/lustre/tcv/freq_rebinned_data/'
-#outdir='/lustre/tcv/calibration_data/'
-indir = '/lustre/tcv/truncated_data/'
-outdir = '/lustre/tcv/rfi_check_data/'
+indir = '/lustre/tcv/freq_rebinned_data/'
+outdir='/lustre/tcv/calibration_data/'
+#indir = '/lustre/tcv/truncated_data/'
+#outdir = '/lustre/tcv/rfi_check_data/'
 directories = os.listdir(indir)
 
 #Setting a single day for parallel computation
@@ -97,7 +97,7 @@ savetxt(outdir+'June_'+date_ind+'_avg_100ohm.txt',mean_load,delimiter=' ')
 savetxt(outdir+'June_'+date_ind+'_fit_100ohm.txt',polyval([Fa,Fb,Fc],freq),delimiter=' ')
 
 #Plotting Checks
-pylab.imshow(sortload*10**9,aspect=90./len(sortind),extent=(40,130,len(sortind),0.0))
+pylab.imshow(sortload*10**9,vmin=0,vmax=8,aspect=90./len(sortind),extent=(40,130,len(sortind),0.0))
 pylab.colorbar()
 #pylab.title('Variation of 100 Ohm over the day')
 pylab.xlabel('Frequency (MHz)')
@@ -110,6 +110,7 @@ pylab.plot(freq_comp,load_comp*10**9,label='Mean Data')
 pylab.plot(freq,polyval([Fa,Fb,Fc],freq)*10**9,label='Linear Fit')
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Power (nW)')
+pylab.ylim(0,8)
 pylab.xlim(40,130)
 pylab.legend()
 pylab.grid()

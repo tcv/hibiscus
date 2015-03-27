@@ -6,6 +6,7 @@ from scipy import optimize
 import os
 import skrf as rf
 import ephem as eph
+import numpy.polynomial.polynomial as poly
 
 def loadsingle(fname):
     """
@@ -135,6 +136,47 @@ def flagging(data,freq,sigma_thres,linscale):
     mask[minmask] = 1.0
     
     return mask
+
+
+def threshold_flag(data,masked,freq,value):
+    """
+    Flags out RFI above a set cutoff.
+    Cutoff has been defined using value as a multiplicative factor times the average polynomial guess (set to 1 at 70 MHz).
+    """
+    new_mask = zeros(len(data))
+    for i in range(0,len(data)):
+        if masked[i]==1.0:
+            new_mask[i] = 1.0
+
+    log_freq = log10(freq/70.)
+    fit_params = [3.5186,-2.6205]
+    dfit = 10**(poly.polyval(log_freq,fit_params))
+    f70 = where(freq<=70.)[0][-1]
+    subfit = dfit/dfit[f70]
+    for i in range(0,len(data)):
+        if new_mask[i]==0:
+            data_fit = subfit[i]*data[f70]
+            if data[i]>data_fit*value:
+                new_mask[i] = 1.0
+
+    return new_mask
+
+def cal_flag(short_data,short_fit,masked,freq,cutoff):
+    """
+    Flags frequencies with bad short data compared to the fit.
+    Note, this will flag frequencies outside the short fit band.
+    """
+    new_mask = zeros(len(masked))
+
+    for i in range(0,len(masked)):
+        if masked[i]==1.0:
+            new_mask[i] = 1.0
+
+    for i in range(0,len(masked)):
+        if abs(short_data[i]-short_fit[i])>cutoff:
+            new_mask[i] = 1.0
+            
+    return new_mask
 
 def spike_flag(data,masked,freq,percent):
     """

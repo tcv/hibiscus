@@ -104,8 +104,8 @@ if int(date_ind)<15:
                 processed_time.append(time)
                 processed_mtime.append(time)
 
-print 'Percent of Data Flagged without Spike Flagger:',100.*mid_mask/total_sum
-print 'Percent of Data Flagged with Spike Flagger:',100.*spike_m/total_sum
+print 'Percent of Data Flagged without Spike Flagger: ',100.*mid_mask/total_sum
+print 'Percent of Data Flagged with Spike Flagger: ',100.*spike_m/total_sum
 
 #Setting up sidereal time arrays
 sid_time = []
@@ -136,7 +136,7 @@ for i in range(0,len(sid_mtime)):
 
 #Frequency Masking Amount Calculation
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
-print 'Percentage of Masked Data from Frequency Masking',percent_masked
+print 'Percentage of Masked Data from Frequency Masking: ',percent_masked
 
 #Adding in Time Masking
 for i in range(0,len(freq)):
@@ -144,14 +144,45 @@ for i in range(0,len(freq)):
     sortmask[:,i] = new_mask
 
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
-print 'Percentage of Masked Data from Frequency and Time Masking',percent_masked
+print 'Percentage of Masked Data from Frequency and Time Masking: ',percent_masked
+
+#Adding in the short flagging:
+
+for i in range(0,len(sortdata)):
+    new_mask = ff.cal_flag(short_full,short_data,sortmask[i],freq,1.e-10)
+    sortmask[i] = new_mask
+
+percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
+print 'Percentage of Masked Data adding short masking: ',percent_masked
+
+
+#Adding in the threshold flagging:
+for i in range(0,len(sortdata)):
+    new_mask = ff.threshold_flag(sortdata[i],sortmask[i],freq,5.)
+    sortmask[i] = new_mask
+
+percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
+print 'Percentage of Masked Data adding threshold masking: ',percent_masked
+
+fmin = where(freq<=50.)[0][-1]
+fmax = where(freq<=100.)[0][-1]
+
+percent_masked_trunc = 100.*sum(sortmask[:,fmin:fmax])/(len(sortmask)*(fmax-fmin))
+print 'Percentage of Masked Data for ',freq[fmin],' to ',freq[fmax],' MHz: ',percent_masked_trunc
 
 #Calculating time mean
 mean_sd, mean_sm = cf.time_mean(sortdata,sortmask)
 
 #Additional Frequency Masking for Mean Data
 percent_masked = 100.*sum(mean_sm)/(len(mean_sm))
-print 'Percent of mean data masked', percent_masked
+print 'Percent of mean data transfer masked: ', percent_masked
+
+
+Kt_mask = ff.spike_flag(mean_sd,mean_sm,freq,10.)
+Kt_mask = ff.cal_flag(short_full,short_data,Kt_mask,freq,1.e-10)
+print 'Percent of mean data spike+cal masked: ',100.*sum(Kt_mask)/len(Kt_mask)
+
+
 
 #Applying calibration data
 Kt = 300./(load_data-short_data)
@@ -185,14 +216,14 @@ pylab.clf()
 #pylab.plot(freq,(load_data - Eff_50_sm(freq)*KA)*Kt50)
 #pylab.plot(freq,(term_data - 4*Eff_100_sm(freq)*KA)*Kt50)
 
-pylab.plot(freq,load_full*Kt,'b')
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(load_full*Kt,mask=Kt_mask)),'b')
 #ylab.plot(freq,Eff_50_sm(freq)*KA)
 #ylab.plot(freq,Eff_100_sm(freq)*4*KA)
-pylab.plot(freq,term_full*Kt,'r')
-pylab.plot(freq, (load_full - Eff_50_sm(freq)*KA)*Kt50,'c')
-pylab.plot(freq,(term_full-Eff_100_sm(freq)*4*KA)*Kt50,'m--')
-pylab.plot(freq,short_full*Kt,'g')
-pylab.plot(freq,short_full*Kt50,'y')
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(term_full*Kt,mask=Kt_mask)),'r')
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)), ma.compressed(ma.array((load_full - Eff_50_sm(freq)*KA)*Kt50,mask=Kt_mask)),'c')
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array((term_full-Eff_100_sm(freq)*4*KA)*Kt50,mask=Kt_mask)),'m--')
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array((short_full*Kt),mask=Kt_mask)),'g')
+pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array((short_full*Kt50),mask=Kt_mask)),'y')
 pylab.legend(('50 Omega','100 Omega','50 Omega w/ PZ','100 Omega w/ PZ','Short','Short w/ PZ'))
 pylab.ylabel('Temperature (Kelvin)')
 pylab.ylim(0,1100)
@@ -224,8 +255,8 @@ print 'Old 70 MHz Short is: ', Kt[f70]*short_data[f70],' Kelvin'
 print 'New 70 MHz Short is: ', Kt50[f70]*short_data[f70],' Kelvin'
 
 
-Kt_mask = ff.spike_flag(mean_Kt,mean_sm,freq,15.)
-print 'Percent of Kt mean data masked',100.*sum(Kt_mask)/len(Kt_mask)
+#Kt_mask = ff.spike_flag(mean_Kt,mean_sm,freq,15.)
+#print 'Percent of Kt mean data masked: ',100.*sum(Kt_mask)/len(Kt_mask)
 
 pylab.plot(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(mean_sd*1.e9,mask=Kt_mask)))
 pylab.xlim(60,120)
@@ -308,9 +339,9 @@ pylab.plot(freq,term_data*1.e9,'c--')
 pylab.legend(('50 Ohm Load','Short','100 Ohm Load'))
 pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_ref_spectrum',dpi=300)
 
-pylab.scatter(freq,load_full*1.e9,c='g',edgecolor='g',s=3) 
-pylab.scatter(freq,short_full*1.e9,c='r',edgecolor='r',s=3) 
-pylab.scatter(freq,term_full*1.e9,c='c',edgecolor='c',s=3) 
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(load_full,mask=Kt_mask))*1.e9,c='g',edgecolor='g',s=3) 
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(short_full,mask=Kt_mask))*1.e9,c='r',edgecolor='r',s=3) 
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(term_full,mask=Kt_mask))*1.e9,c='c',edgecolor='c',s=3) 
 pylab.legend()
 pylab.savefig(outdir+'June_'+date_ind+'_mean_uncal_ref_spectrum_data',dpi=300) 
 pylab.clf()
@@ -326,9 +357,9 @@ pylab.plot(freq,term_data*Kt,'c--')
 pylab.legend(('50 Ohm Load','Short','100 Ohm Load'))
 pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_ref_spectrum',dpi=300)
 
-pylab.scatter(freq,load_full*Kt,c='g',edgecolor='g',s=3)
-pylab.scatter(freq,short_full*Kt,c='r',edgecolor='r',s=3)
-pylab.scatter(freq,term_full*Kt,c='c',edgecolor='c',s=3)
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(load_full*Kt,mask=Kt_mask)),c='g',edgecolor='g',s=3)
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(short_full*Kt,mask=Kt_mask)),c='r',edgecolor='r',s=3)
+pylab.scatter(ma.compressed(ma.array(freq,mask=Kt_mask)),ma.compressed(ma.array(term_full*Kt,mask=Kt_mask)),c='c',edgecolor='c',s=3)
 pylab.legend() 
 pylab.savefig(outdir+'June_'+date_ind+'_mean_JNCcal_ref_spectrum_data',dpi=300)
 

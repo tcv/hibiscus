@@ -40,8 +40,15 @@ freqscale = 32
 # Efficiency calculation
 R_ant,X_ant,F_ant = ef.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = ef.imped_skrf(amp_s_file,0.0)
+Z_ant = sqrt(R_ant**2+X_ant**2)
+Z_ant_sm = itp.UnivariateSpline(F_ant,Z_ant,s=0.01)
 Effic = ef.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
 Eff_sm = itp.UnivariateSpline(F_ant,Effic,s=0.01)
+Eff_50 = ef.effic(50.*ones(len(F_amp)),zeros(len(F_amp)),F_amp,R_amp,X_amp,F_amp)
+Eff_50_sm = itp.UnivariateSpline(F_amp,Eff_50,s=0.01)
+Eff_100 = ef.effic(100.*ones(len(F_amp)),zeros(len(F_amp)),F_amp,R_amp,X_amp,F_amp)
+Eff_100_sm = itp.UnivariateSpline(F_amp,Eff_100,s=0.01)
+
 
 #GSM data rearranged to array with first index = time, second index = freq
 gsm_freq = arange(60,90,1)
@@ -65,7 +72,14 @@ if int(date_ind)<15:
     dirlist = os.listdir(directory)
  
 #Prepping short data for use
-    short_data = loadtxt(Kdir+'June_'+date_ind+'_avg_short.txt')
+    short_data = loadtxt(Kdir+'June_'+date_ind+'_fit_short.txt')
+    short_full = loadtxt(Kdir+'June_'+date_ind+'_avg_short.txt')
+    load_data = loadtxt(Kdir+'June_'+date_ind+'_fit_50ohm.txt')
+    term_data = loadtxt(Kdir+'June_'+date_ind+'_fit_100ohm.txt')
+    load_full = loadtxt(Kdir+'June_'+date_ind+'_avg_50ohm.txt')
+    term_full = loadtxt(Kdir+'June_'+date_ind+'_avg_100ohm.txt')
+#    KA = (load_data-term_data)/(Eff_50_sm(freq)-4*Eff_100_sm(freq))
+#    PZ = KA*(Z_ant_sm(freq)**2)*Eff_sm(freq)/50.**2
 
 #Iterate for each file in the directory
     for fname in dirlist:
@@ -75,6 +89,8 @@ if int(date_ind)<15:
             time,form,sub_data,mask,freq,volt,temp = ff.loadsingle(filename)
             width = 90.0/len(sub_data)
             freq = arange(40.+width/2,130.,width)
+            KA = (load_data-term_data)/(Eff_50_sm(freq)-4*Eff_100_sm(freq))
+            PZ = KA*(Z_ant_sm(freq)**2)*Eff_sm(freq)/50.**2
             if len(freq)>len(sub_data):
                 freq = freq[0:-2]
             if fname.split('_')[-1]=='mask.dat':
@@ -82,7 +98,7 @@ if int(date_ind)<15:
                     processed_mask.append(sub_data)
                     processed_mtime.append(time)
             elif fname.split('_')[-1]=='antenna.dat':
-                new_data = (sub_data/Eff_sm(freq)-short_data)
+                new_data = (sub_data-short_data-PZ)/Eff_sm(freq)
                 processed_data.append(new_data)
                 processed_time.append(time)
 
@@ -178,8 +194,8 @@ print 'K_dgsm at 70 MHz is:',K_dgsm[f70,0]
 savetxt(Kdir+'June_'+date_ind+'_K_dgsm.txt',K_dgsm,delimiter=' ')
 
 #Plot results
-pylab.plot(freq,abs(mean_gsm),label='mean GSM Spectrum')
-pylab.plot(freq,mean_sd*K_dgsm[:,0],label='mean Calibrated Spectrum')
+pylab.plot(ma.compressed(ma.array(freq,mask=mean_gmask)),ma.compressed(ma.array(abs(mean_gsm),mask=mean_gmask)),label='mean GSM Spectrum')
+pylab.plot(ma.compressed(ma.array(freq,mask=mean_sm)),ma.compressed(ma.array(mean_sd*K_dgsm[:,0],mask=mean_sm)),label='mean Calibrated Spectrum')
 pylab.grid()
 pylab.xlim(40,130)
 pylab.ylim(0,1.5e4)

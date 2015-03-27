@@ -146,7 +146,7 @@ def gain_calc(data,masked,gsm,K0):
     
     return Kf[0]
 
-def poly_fore(data,masked,freq,minf,maxf,n):
+def poly_fore(data,masked,freq,minf,maxf,n,std):
     """
     Calculates a polynomial fit for data.
     Inputs:
@@ -164,6 +164,8 @@ def poly_fore(data,masked,freq,minf,maxf,n):
     data_comp = ma.compressed(data_array)
     freq_array = ma.array(freq,mask=masked)
     freq_comp = ma.compressed(freq_array)
+    std_comp = ma.compressed(ma.array(std, mask=masked))
+
 
     min_ind = 0
     max_ind = -1
@@ -174,8 +176,9 @@ def poly_fore(data,masked,freq,minf,maxf,n):
 
     log_data = log10(data_comp[min_ind:max_ind])
     log_freq = log10(freq_comp[min_ind:max_ind]/70.)
+    weights = 1/std_comp[min_ind:max_ind]
     
-    fit_params = poly.polyfit(log_freq,log_data,n)
+    fit_params = poly.polyfit(log_freq,log_data,n,w=weights)
     dfit = 10**(poly.polyval(log10(freq/70.),fit_params))
 
     return dfit, fit_params
