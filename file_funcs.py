@@ -360,19 +360,21 @@ def timerebin(data,masked):
 
     return new_data,new_mask
 
-def sidereal(time,idate):
+def sidereal(time,idate,longitude,latitude):
     """
     Turns a time in UTC (defined since initial) into LST.
     time is in hours and idate is in 'YYYY/MM/DD'
     """
     initial = eph.date('2013/6/1')
-    guad = eph.Observer()
-    guad.lon = '-118.3'
-    guad.lat = '28.8833'
+    site = eph.Observer()
+    site.lon = longitude
+    site.lat = latitude
+#    guad.lon = '-118.3'
+#    guad.lat = '28.8833'
     
     single = eph.date(initial+time/24.)
-    guad.date = single
-    single_time = guad.sidereal_time()
+    site.date = single
+    single_time = site.sidereal_time()
     sidereal_hour = single_time*12./pi
 
     return sidereal_hour

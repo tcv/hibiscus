@@ -14,16 +14,21 @@ import sys
 import matplotlib.pyplot as plt
 sys.path.append(os.path.abspath('../../hibiscus'))
 import file_funcs as ff
+import cal_funcs as cf
+import gsm_funcs as gf
 
 #Main directories for the input and output
 #indir = '/lustre/tcv/truncated_data/'
 #indir = '../../Reverb_chamber_data/'
 #indir = '../../Karoo_data/truncated/'
-indir = '../../Karoo_data_day1/rebinned/'
+indir = '../../Karoo_data_Apr03_70/rebinned/'
 #outdir = '/lustre/tcv/freq_rebinned_data/'
-outdir = '../../Karoo_data_day1/rebinned/'
+outdir = '../../Karoo_data_Apr03_70/rebinned/'
 #Kdir = '/lustre/tcv/rfi_check_data/'
 #directories = os.listdir(indir)
+beamfile = '../../beam_simulations50-90.dat'
+radecfile = '../../angles.dat'
+gsmdir = '../../galaxy_maps_radec/'
 
 #Setting a single day for parallel computation
 #date_ind = sys.argv[1]
@@ -36,7 +41,11 @@ processed_data = []
 processed_mask = []
 processed_time = []
 processed_mtime = []
-
+noise_data = []
+noise_time = []
+load_data = []
+term_data = []
+short_data = []
 
 new_directory = outdir
 #if freqscale==32:
@@ -62,9 +71,9 @@ for fname in dirlist:
             width = 90.0/len(sub_data)
             freq = arange(40,130.0,width)
             if len(freq)>368:
-                print 'problem', fname
+                print 'long problem', fname
             elif len(freq)<367:
-                print 'problem',fname
+                print 'short problem',fname
             
             if fname.split('_')[-1]=='mask.dat':
                 if fname.split('_')[-2]=='antenna':
@@ -74,6 +83,17 @@ for fname in dirlist:
                 processed_data.append(sub_data)
                 processed_time.append(time)
 
+            elif fname.split('_')[-1]=='noise.dat':
+                noise_data.append(sub_data)
+                noise_time.append(time)
+            elif fname.split('_')[-1]=='50ohm.dat':
+                load_data.append(sub_data)
+            elif fname.split('_')[-1]=='open.dat':
+                term_data.append(sub_data)
+            elif fname.split('_')[-1]=='short.dat':
+                short_data.append(sub_data)
+
+       
 print shape(processed_data)
 print shape(processed_mask)
 processed_time = processed_time - 9.*ones(len(processed_time))
@@ -85,9 +105,24 @@ sid_mtime = []
 idate = '2015/4/1'
 longitude = '21.4109'
 latitude = '-30.7216'
+elevation = 1080
+gsm_freq = 70.
+
+gsm_data = []
+gaindb, sim_var = gf.sim_comp(beamfile,gsm_freq)
+freq_gsm, gsmdata = gf.gsm_temps(gsmdir,gsm_freq)
+ras,decs = gf.get_gsm_radec(radecfile)
+for t in range(0,len(processed_time)):
+    gsm_array, gsm_var = gf.gsm_comp(freq_gsm,gsmdata,ras,decs,lat,lon,elevation,time,idate)
+    fr = gf.ant_beam(gsm_array,gsm_var, gaindb, sim_var, gsm_freq)
+    gsm_data.append(fr)    
+
+gsm_data = array(gsm_data)
+
 for i in range(0,len(processed_time)):
     single_sid = ff.sidereal(processed_time[i],idate,longitude,latitude)
     sid_time.append(single_sid)
+    
 for i in range(0,len(processed_mtime)):
     single_sid = ff.sidereal(processed_mtime[i],idate,longitude,latitude)
     sid_mtime.append(single_sid)
@@ -98,9 +133,11 @@ processed_mask = array(processed_mask)
 sortind = argsort(processed_time)
 sorttime = zeros(len(processed_data))
 sortdata = zeros((len(processed_data),len(processed_data[0])))
+sortgsm = zeros(len(processed_data))
 for i in range(0,len(sid_time)):
     sorttime[i] = processed_time[sortind[i]]
     sortdata[i] = processed_data[sortind[i]]
+    sortgsm[i] = gsm_data[sortind[i]]
 sortindm = argsort(processed_mtime)
 sortmask = zeros((len(processed_mask),len(processed_mask[0])))
 for i in range(0,len(sid_mtime)):
@@ -118,3 +155,4 @@ for i in range(0,len(freq)):
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
 print 'Percentage of Masked Data from Frequency and Time Masking',percent_masked
 
+mean_sd, mean_sm = cf.time_mean(sortdata,sortmask)

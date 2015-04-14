@@ -18,9 +18,9 @@ import file_funcs as ff
 #Main directories for the input and output
 #indir = '/lustre/tcv/truncated_data/'
 #indir = '../../Reverb_chamber_data/'
-indir = '../../Karoo_data_day1/truncated/'
+indir = '../../Karoo_data_Apr11_70/truncated/'
 #outdir = '/lustre/tcv/freq_rebinned_data/'
-outdir = '../../Karoo_data_day1/rebinned/'
+outdir = '../../Karoo_data_Apr11_70/rebinned/'
 #Kdir = '/lustre/tcv/rfi_check_data/'
 #directories = os.listdir(indir)
 

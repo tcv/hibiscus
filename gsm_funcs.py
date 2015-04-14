@@ -8,39 +8,182 @@ import skrf as rf
 import ephem as eph
 import numpy.polynomial.polynomial as poly
 
-
-def find_gain(f,phi,theta,f_array,phi_array,theta_array,gaindb):
+def get_gsm_radec(filename):
     """
-    Determining the specific gain value to use from the beam data.
-    f, phi, and theta assign the specific point of interest.
-    f_array, phi_array,theta_array are the entire reference datasets
-    gaindb is the gain array
+    gets the appropriate ra,dec array for the angles.dat file
+    (ra, dec for each healpix position).
+    goes with the gsm data. 
+    """
+    file = loadtxt(filename)
+    ra_array = file[:,1]
+    dec_array = 90.*ones(len(file))-file[:,0]
+
+    ra_array = array(ra_array)
+    dec_array = array(dec_array)
+
+    return ra_array,dec_array
+
+def antenna_beam_pattern(filename,input_freqs):
+    """
+    Converts the beam_simulations50-90.dat file into a gain array,
+    with corresponding theta,phi and freq arrays.
     """
     
-    f_index = where(f_array<=f)[0][-1]
-    t_index = where(theta_array<=theta)[0][-1]
-    p_index = where(phi_array<=phi)[0][-1]
+    freq_array = []
+    theta_array = []
+    phi_array = []
+    gaindb = []
+   
+    f = open(filename)
+
+    for line in range(0,21,1):
+        singlef = f.readline()
+        for phi in range(0,181,1):
+            for theta in range(0,181,1):
+                singleline= f.readline()
+                if (float(singlef.split('  ')[0])>=input_freqs):
+                    if len(freq_array)<=181*181:
+#                    if (float(singlef.split('  ')[0])<input_freqs+3.):
+                        theta_array.append(float(singleline.split('  ')[0]))
+                        phi_array.append(float(singleline.split('  ')[1]))
+                        gaindb.append(float(singleline.split('  ')[2]))
+                        freq_array.append(float(singlef.split(' ')[0]))
+    f.close()
+
+    freq_array = array(freq_array)
+    theta_array = array(theta_array)
+    phi_array = array(phi_array)
+    gaindb = array(gaindb)
     
-    P = gaindb[t_index + MAXT(p_index+MAXP*f_index)]
-    p = power(10.,0.1*P)
+    return freq_array,theta_array,phi_array,gaindb
+
+def gsm_temps(gsmdir,input_freqs):
+    """
+    loads the gsm data into a temperature array,
+    with corresponding freq array (ra/dec arrays from get_gsm_radec). 
+    """
+
     
-    return p
+    freqs = int(input_freqs)
+
+    gsmdata = []
+    fname = gsmdir+'radec'+str(int(freqs))+'.dat'
+    single = loadtxt(fname)
+    gsmdata.append(single)
+
+    gsmdata = array(gsmdata)
+
+    return freqs, gsmdata
 
 
-def gain_linear(t_index,p_index,f_index,gaindb):
+def azel_loc(ra,dec,lat,lon,elevation,time,idate):
     """
-    Converts a gain value to linear scale.
+    Uses ephem to convert ra/dec to az/el for a given location.
+    alt runs from -pi/2 to pi/2
+    az  runs from 0 to 2 pi
     """
-    P = gaindb[t_index+MAXT*(p_index+MAXP*f_index)]
-    p = power(10.,0.05*P)
+    
+    site = eph.Observer()
+    site.lon = lon
+    site.lat = lat
+    site.elevation = elevation
+    date = eph.date(idate)+time/24.
+    site.date = date
+    site.pressure =0
 
-    return p
+    curr_ra = eph.degrees(ra*pi/180.)
+    curr_dec = eph.degrees(dec*pi/180.)
+    db_entry = "curr_pt,f/J,"+str(curr_ra)+","+str(curr_dec)+",-1"
+    point = eph.readdb(db_entry)
+
+    point.compute(site)
+
+    cur_alt = point.alt
+    cur_az = point.az
+
+    return cur_alt, cur_az
+
+# At this point I have two data arrays, for the simulation and gsm data.
+# Now I need code to calculate a expected temperature given
+# Frequency and time.
+
+def gsm_comp(freq_gsm,gsm_data,ras,decs,lat,lon,elevation,time,idate):
+    """
+    Creates the appropriate gsm array for a given time and freq
+    """
+
+    alts = []
+    azs = []
+    freqs_gsm = []
+    gsm_array = []
+    for i in range(0,len(ras)):
+        sin_alt, sin_az = azel_loc(ras[i],decs[i],lat,lon,elevation,time,idate)
+        if sin_alt>=0:
+            alts.append(sin_alt)
+            azs.append(sin_az)
+            freqs_gsm.append(freq_gsm)
+            gsm_array.append(gsmdata[0,i])
+            
+    alts = array(alts)
+    azs = array(azs)
+    freqs_gsm = array(freqs_gsm)
+    gsm_array = array(gsm_array)
+
+    gsm_var = vstack((alts,azs,freqs_gsm)).T
+    
+    return gsm_array, gsm_var
+
+def sim_comp(beamfile,freqs):
+    """
+    Generates the sim dataset in the right shape for a given freq.
+    """
+
+    freqs_sim,theta_sim,phi_sim,gaindb = antenna_beam_pattern(beamfile,freqs)
+
+    theta_sim = theta_sim*pi/180.
+    phi_sim = phi_sim*pi/180.
+
+    alt_sim = zeros(len(phi_sim))
+    az_sim = zeros(len(phi_sim))
+    for p in range(0,len(phi_sim)):
+        if theta_sim[p]<0:
+            az_sim[p] = 2*pi - phi_sim[p]
+            alt_sim[p] = pi/2. +theta_sim[p]
+        else:
+            az_sim[p] = phi_sim[p]
+            alt_sim[p] = pi/2.-theta_sim[p]
+            
+    sim_var = vstack((alt_sim,az_sim,freqs_sim)).T
+
+    return gaindb, sim_var
+    
+
+def ant_beam(gsm_array, gsm_var, gaindb, sim_var, freqs):
+    """
+    Combines the gsm and sim datasets for a given place/time.
+    Note I've limited the frequency range that is loaded to avoid memory errors
+    Re-wrote to limit to a single frequency 
+    """
+
+    grid_alt, grid_az, grid_f = mgrid[0:pi/2.:90j,0:2.*pi:180j,int(freqs):int(freqs)+1]
+
+    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az,grid_f),method='nearest')
+    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az,grid_f),method='nearest')
+
+    full_beam = pow(10.,0.05*grid_gain)*grid_temp
+    
+    summed_beam = ma.sum(ma.sum(full_beam,axis=0),axis=0)
+    summed_sim = ma.sum(ma.sum(pow(10.,0.05*grid_gain),axis=0),axis=0)
+#    print shape(summed_beam)
+
+    final_result = summed_beam/summed_sim
+
+    return final_result
+    
 
 def find_fpt(f, phi,theta,f_array,phi_array,theta_array):
     """
-    Determines the appropriate indices needed for gain data selection.
-   
-    Using find_fpt, then gain_linear is roughly the same as find_gain except for a square root in the power conversion. 
+    Determines the appropriate indices needed for beam sim data selection.
     """
     f_idx = where(f_array<=f)[0][-1]
     t_idx = where(theta_array<=theta)[0][-1]
@@ -48,9 +191,25 @@ def find_fpt(f, phi,theta,f_array,phi_array,theta_array):
 
     return f_idx,t_idx,p_idx
 
+def gain_linear(t_index,p_index,f_index,gaindb):
+    """
+    Converts a gain value to linear scale.
+    Question of factor of 1/2 in power for sim data.
+    """
+
+    MAXT = 181.
+    MAXP = 181.
+
+    P = gaindb[t_index+MAXT*(p_index+MAXP*f_index)]
+    p = power(10.,0.05*P)
+
+    return p
+
 def findg(freq,phi,theta,gaindb,f,p,t):
     """
-    calculates gain for the appropriate, f,p,t
+    Interpolates the beam sim data for any f, p, t indices from find_fpt
+    as long as as the values are within the ranges of the 
+    freq, theta and phi arrays. 
     """
     epsilon = 1.e-3
     th1 = 90.-t
@@ -102,56 +261,12 @@ def findg(freq,phi,theta,gaindb,f,p,t):
 
     return ans5
 
-def galaxy_sky_map(direct,freq):
-    """
-    """
-    file = loadtxt(direct+'radec'+str(int(freq))+'.dat')
-    
-    return file
-
-def get_ra_dec(filename):
-    """
-    gets the appropriate ra,dec array for the angles.dat file
-    (ra, dec for each healpix position). 
-    """
-    file = loadtxt(filename)
-    ra_array = file[:,1]
-    dec_array = 90.*ones(len(file))-file[:,0]
-
-    return ra_array,dec_array
-
-def antenna_beam_pattern(filename):
-    """
-    Converts the beam_simulations50-90.dat file into a gain array, with corresponding theta,phi and freq arrays.
-    """
-    
-    freq = []
-    theta = []
-    phi = []
-    gaindb = []
-   
-    f = open(filename)
-
-    for line in range(0,21,1):
-        singlef = f.readline()
-#        freq_array.append(float(singlef.split(' ')[0]))
-        for phi in range(0,181,1):
-            for theta in range(0,181,1):
-                singleline= f.readline()
-                theta.append(float(singleline.split('  ')[0]))
-                phi.append(float(singleline.split('  ')[1]))
-                gaindb.append(float(singleline.split('  ')[2]))
-                freq.append(float(singlef.split(' ')[0]))
-    f.close()
-    
-    return freq,theta,phi,gaindb
-
-def galaxy_temperature(lst,f,ras,decs,freqs,thetas,phis,gaindb):
-    """
-    """
-    offset = -15.
-    the_ras = ras*pi/180.
-    the_decs = decs*pi/180.
-    
-
-    return
+beamfile = '../beam_simulations50-90.dat'
+radecfile = '../angles.dat'
+gsmdir = '../galaxy_maps_radec/'
+lat = '-30.727206'
+lon = '21.479055'
+elevation = 1080
+time = 3.5*24.
+idate = '2015/04/01'
+freqs = 60

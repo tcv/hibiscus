@@ -17,8 +17,8 @@ import file_funcs as ff
 
 # Main directories for the input and output
 #indir = '/lustre/anat/Guadalupe_data/'
-indir = '../../Karoo_data_day1/'
-outdir = '../../Karoo_data_day1/truncated/'
+indir = '../../Karoo_data_Apr13_70/'
+outdir = '../../Karoo_data_Apr13_70/truncated/'
 #outdir = '/lustre/tcv/truncated_data/'
 directories = os.listdir(indir)
 
