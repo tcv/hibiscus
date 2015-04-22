@@ -107,29 +107,29 @@ def azel_loc(ra,dec,lat,lon,elevation,time,idate):
 # Now I need code to calculate a expected temperature given
 # Frequency and time.
 
-def gsm_comp(freq_gsm,gsm_data,ras,decs,lat,lon,elevation,time,idate):
+def gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate):
     """
     Creates the appropriate gsm array for a given time and freq
     """
 
     alts = []
     azs = []
-    freqs_gsm = []
+    #freqs_gsm = []
     gsm_array = []
     for i in range(0,len(ras)):
         sin_alt, sin_az = azel_loc(ras[i],decs[i],lat,lon,elevation,time,idate)
         if sin_alt>=0:
             alts.append(sin_alt)
             azs.append(sin_az)
-            freqs_gsm.append(freq_gsm)
+    #        freqs_gsm.append(freq_gsm)
             gsm_array.append(gsmdata[0,i])
             
     alts = array(alts)
     azs = array(azs)
-    freqs_gsm = array(freqs_gsm)
+    #freqs_gsm = array(freqs_gsm)
     gsm_array = array(gsm_array)
 
-    gsm_var = vstack((alts,azs,freqs_gsm)).T
+    gsm_var = vstack((alts,azs)).T
     
     return gsm_array, gsm_var
 
@@ -153,22 +153,22 @@ def sim_comp(beamfile,freqs):
             az_sim[p] = phi_sim[p]
             alt_sim[p] = pi/2.-theta_sim[p]
             
-    sim_var = vstack((alt_sim,az_sim,freqs_sim)).T
+    sim_var = vstack((alt_sim,az_sim)).T
 
     return gaindb, sim_var
     
 
-def ant_beam(gsm_array, gsm_var, gaindb, sim_var, freqs):
+def ant_beam(gsm_array, gsm_var, gaindb, sim_var):
     """
     Combines the gsm and sim datasets for a given place/time.
     Note I've limited the frequency range that is loaded to avoid memory errors
     Re-wrote to limit to a single frequency 
     """
 
-    grid_alt, grid_az, grid_f = mgrid[0:pi/2.:90j,0:2.*pi:180j,int(freqs):int(freqs)+1]
+    grid_alt, grid_az = mgrid[0:pi/2.:90j,0:2.*pi:180j]
 
-    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az,grid_f),method='nearest')
-    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az,grid_f),method='nearest')
+    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='linear')
+    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='linear')
 
     full_beam = pow(10.,0.05*grid_gain)*grid_temp
     

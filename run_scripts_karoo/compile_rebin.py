@@ -103,29 +103,30 @@ sid_time = []
 sid_mtime = []
 
 idate = '2015/4/1'
-longitude = '21.4109'
-latitude = '-30.7216'
+lon = '21.4109'
+lat = '-30.7216'
 elevation = 1080
 gsm_freq = 70.
 
-gsm_data = []
-gaindb, sim_var = gf.sim_comp(beamfile,gsm_freq)
-freq_gsm, gsmdata = gf.gsm_temps(gsmdir,gsm_freq)
-ras,decs = gf.get_gsm_radec(radecfile)
-for t in range(0,len(processed_time)):
-    gsm_array, gsm_var = gf.gsm_comp(freq_gsm,gsmdata,ras,decs,lat,lon,elevation,time,idate)
-    fr = gf.ant_beam(gsm_array,gsm_var, gaindb, sim_var, gsm_freq)
-    gsm_data.append(fr)    
+#gsm_data = []
+#gaindb, sim_var = gf.sim_comp(beamfile,gsm_freq)
+#freq_gsm, gsmdata = gf.gsm_temps(gsmdir,gsm_freq)
+#print shape(gsmdata)
+#ras,decs = gf.get_gsm_radec(radecfile)
+#for t in range(0,len(processed_time)):
+#    gsm_array, gsm_var = gf.gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate)
+#    fr = gf.ant_beam(gsm_array,gsm_var, gaindb, sim_var)
+#    gsm_data.append(fr)    
 
-gsm_data = array(gsm_data)
+#gsm_data = array(gsm_data)
 
 for i in range(0,len(processed_time)):
-    single_sid = ff.sidereal(processed_time[i],idate,longitude,latitude)
+    single_sid = ff.sidereal(processed_time[i],idate,lon,lat)
     sid_time.append(single_sid)
     
-for i in range(0,len(processed_mtime)):
-    single_sid = ff.sidereal(processed_mtime[i],idate,longitude,latitude)
-    sid_mtime.append(single_sid)
+#for i in range(0,len(processed_mtime)):
+#    single_sid = ff.sidereal(processed_mtime[i],idate,lon,lat)
+#    sid_mtime.append(single_sid)
 
 processed_data = array(processed_data)
 processed_mask = array(processed_mask)
@@ -133,11 +134,11 @@ processed_mask = array(processed_mask)
 sortind = argsort(processed_time)
 sorttime = zeros(len(processed_data))
 sortdata = zeros((len(processed_data),len(processed_data[0])))
-sortgsm = zeros(len(processed_data))
+#sortgsm = zeros(len(processed_data))
 for i in range(0,len(sid_time)):
     sorttime[i] = processed_time[sortind[i]]
     sortdata[i] = processed_data[sortind[i]]
-    sortgsm[i] = gsm_data[sortind[i]]
+#    sortgsm[i] = gsm_data[sortind[i]]
 sortindm = argsort(processed_mtime)
 sortmask = zeros((len(processed_mask),len(processed_mask[0])))
 for i in range(0,len(sid_mtime)):

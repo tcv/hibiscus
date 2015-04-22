@@ -47,6 +47,9 @@ def loadsingle(fname):
 
     volt = 0.0
     Tamb=300.
+    next_line = False
+    time2 = 0.
+    
     f = open(fname)
     for i in range(0,20):
         test = f.readline()
@@ -54,6 +57,24 @@ def loadsingle(fname):
             volt = float(test.split(' ')[2])
         elif test.split(' ')[-1]=='celsius\n':
             Tamb = float(test.split(' ')[2])+273.15
+        if next_line ==True:
+            month = test.split('-')[1]
+            end = test.split('-')[-1]
+            day = end.split(' ')[0]
+            tt = end.split(' ')[1]
+            hr = tt.split(':')[0]
+            minu = tt.split(':')[1]
+            sec = tt.split(':')[2]
+            time2 = float(day)*24.+float(hr)+float(minu)/60.+float(sec)/3600.
+
+            next_line = False
+        if len(test.split('  '))>1:
+
+            if test.split('  ')[1]=='GMT Time:\n':
+                next_line = True
+
+    if abs(time-time2)>0.01:
+        print 'Difference betweeen fname time and ftime: ',time-time2
 
     return time,form,file_data,mask_data,freq_data,volt,Tamb
 
@@ -85,6 +106,8 @@ def writesingle(fname, new_dir, new_data, append):
 
     return
 
+    
+
 def flagging(data,freq,sigma_thres,linscale):
     """
     Flags data for RFI.
@@ -109,7 +132,7 @@ def flagging(data,freq,sigma_thres,linscale):
     mask[infmask] = 1.0
     scale = linscale
     for f in range(0, len(data)/scale-1):
-	(Fa,Fb) = polyfit(freq[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
+        (Fa,Fb) = polyfit(freq[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
         flat_data = data[f*scale:(f+1)*scale]/polyval([Fa,Fb],freq[f*scale:(f+1)*scale])
         flat_sigma = ma.std(flat_data)
         flat_mean = ma.mean(flat_data)
@@ -235,7 +258,7 @@ def timeflag(data,masked,time,sigma_thres,linscale):
     f=0
     if (len(data)/scale-1)<=1:
         (Fa,Fb) = polyfit(time,data,1)
-	flat_data = data/polyval([Fa,Fb],time)
+        flat_data = data/polyval([Fa,Fb],time)
         flat_sigma = ma.std(flat_data)
         flat_mean = ma.mean(flat_data)
         max_accept = 1.0+flat_sigma*sigma_thres
@@ -248,8 +271,8 @@ def timeflag(data,masked,time,sigma_thres,linscale):
         new_mask[minmask] = 1.0
     elif(len(data)/scale-1)>1:
         for f in range(0, len(data)/scale-1):
-	    (Fa,Fb) = polyfit(time[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
-	    flat_data = data[f*scale:(f+1)*scale]/polyval([Fa,Fb],time[f*scale:(f+1)*scale])
+            (Fa,Fb) = polyfit(time[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
+            flat_data = data[f*scale:(f+1)*scale]/polyval([Fa,Fb],time[f*scale:(f+1)*scale])
             flat_sigma = ma.std(flat_data)
             flat_mean = ma.mean(flat_data)
             max_accept = 1.0+flat_sigma*sigma_thres
@@ -261,8 +284,8 @@ def timeflag(data,masked,time,sigma_thres,linscale):
             new_mask[maxmask] = 1.0
             new_mask[minmask] = 1.0
         
-	(Fa,Fb) = polyfit(time[(f+1)*scale:-1],data[(f+1)*scale:-1],1)
-	flat_data = data[(f+1)*scale:-1]/polyval([Fa,Fb],time[(f+1)*scale:-1])
+        (Fa,Fb) = polyfit(time[(f+1)*scale:-1],data[(f+1)*scale:-1],1)
+        flat_data = data[(f+1)*scale:-1]/polyval([Fa,Fb],time[(f+1)*scale:-1])
         flat_sigma = ma.std(flat_data)
         flat_mean = ma.mean(flat_data)
         max_accept = 1.0+flat_sigma*sigma_thres
