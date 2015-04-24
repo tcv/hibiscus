@@ -19,8 +19,8 @@ sys.path.append(os.path.abspath('../../hibiscus'))
 import file_funcs as ff
 
 # Main directories for the input and output
-indir = '../../Karoo_data_Apr07_100/'
-outdir = '../../Karoo_data_Apr07_100/'
+indir = '../../Karoo_data_Apr14_70/'
+outdir = '../../Karoo_data_Apr14_70/'
 directories = os.listdir(indir)
 
 # Based upon the naming convention for the subdirectories in the raw data
@@ -46,7 +46,7 @@ for direct in directories:
         tt = []
 #Iterate for each file in the directory
         for fname in dirlist:
-            if len(fname.split('_'))>=3:
+            if len(fname.split('_'))>3:
                 filename = directory+fname
                 print filename
                 time,form,sub_data,mask,freq,volt,temp = ff.loadsingle(filename)

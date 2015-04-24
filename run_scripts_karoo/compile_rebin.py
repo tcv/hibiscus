@@ -21,9 +21,9 @@ import gsm_funcs as gf
 #indir = '/lustre/tcv/truncated_data/'
 #indir = '../../Reverb_chamber_data/'
 #indir = '../../Karoo_data/truncated/'
-indir = '../../Karoo_data_Apr03_70/rebinned/'
+indir = '../../Karoo_data_Apr12_70/rebinned/'
 #outdir = '/lustre/tcv/freq_rebinned_data/'
-outdir = '../../Karoo_data_Apr03_70/rebinned/'
+outdir = '../../Karoo_data_Apr12_70/rebinned/'
 #Kdir = '/lustre/tcv/rfi_check_data/'
 #directories = os.listdir(indir)
 beamfile = '../../beam_simulations50-90.dat'
