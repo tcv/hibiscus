@@ -7,6 +7,7 @@ import os
 import skrf as rf
 import ephem as eph
 import numpy.polynomial.polynomial as poly
+import errno
 
 def loadsingle(fname):
     """
@@ -401,4 +402,17 @@ def sidereal(time,idate,longitude,latitude):
     sidereal_hour = single_time*12./pi
 
     return sidereal_hour
+
+def mkdir_p(path):
+    """
+    Create a directory with 'mkdir -p' functionality
+    """
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST:
+            pass
+        else: raise
+
+    return
 
