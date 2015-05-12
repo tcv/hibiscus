@@ -17,6 +17,7 @@ def get_gsm_radec(filename):
     file = loadtxt(filename)
     ra_array = file[:,1]
     dec_array = 90.*ones(len(file))-file[:,0]
+    file = []
 
     ra_array = array(ra_array)
     dec_array = array(dec_array)
@@ -29,32 +30,34 @@ def antenna_beam_pattern(filename,input_freqs):
     with corresponding theta,phi and freq arrays.
     """
     
-    freq_array = []
-    theta_array = []
-    phi_array = []
-    gaindb = []
+    freq_array = zeros(181*181)
+    theta_array = zeros(181*181)
+    phi_array = zeros(181*181)
+    gaindb = zeros(181*181)
    
     f = open(filename)
 
     for line in range(0,21,1):
         singlef = f.readline()
+#        print singlef.split(' ')[0],input_freqs
         for phi in range(0,181,1):
             for theta in range(0,181,1):
                 singleline= f.readline()
-                if (float(singlef.split('  ')[0])>=input_freqs):
-                    if len(freq_array)<=181*181:
+#                if (float(singlef.split('  ')[0])>=float(input_freqs)):
+                if abs(float(singlef.split(' ')[0])-float(input_freqs))<=0.5:
 #                    if (float(singlef.split('  ')[0])<input_freqs+3.):
-                        theta_array.append(float(singleline.split('  ')[0]))
-                        phi_array.append(float(singleline.split('  ')[1]))
-                        gaindb.append(float(singleline.split('  ')[2]))
-                        freq_array.append(float(singlef.split(' ')[0]))
+                    theta_array[phi*181+theta] = (float(singleline.split('  ')[0]))
+                    phi_array[phi*181+theta] = (float(singleline.split('  ')[1]))
+                    gaindb[phi*181+theta] = (float(singleline.split('  ')[2]))
+                    freq_array[phi*181+theta] = (float(singlef.split(' ')[0]))
     f.close()
 
     freq_array = array(freq_array)
     theta_array = array(theta_array)
     phi_array = array(phi_array)
     gaindb = array(gaindb)
-    
+#    print ma.sum(gaindb)    
+
     return freq_array,theta_array,phi_array,gaindb
 
 def gsm_temps(gsmdir,input_freqs):
@@ -66,12 +69,13 @@ def gsm_temps(gsmdir,input_freqs):
     
     freqs = int(input_freqs)
 
-    gsmdata = []
+#    gsmdata = []
     fname = gsmdir+'radec'+str(int(freqs))+'.dat'
-    single = loadtxt(fname)
-    gsmdata.append(single)
-
-    gsmdata = array(gsmdata)
+    gsmdata = loadtxt(fname)
+#    gsmdata.append(single)
+#    single = []
+ 
+#    gsmdata = array(gsmdata)
 
     return freqs, gsmdata
 
@@ -112,24 +116,31 @@ def gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate):
     Creates the appropriate gsm array for a given time and freq
     """
 
-    alts = []
-    azs = []
+    alts = zeros(len(ras))
+    azs = zeros(len(ras))
     #freqs_gsm = []
-    gsm_array = []
+    gsm_array = zeros(len(ras))
+    len_a  = 0
     for i in range(0,len(ras)):
+#    i = 1000
+#    while 1:
         sin_alt, sin_az = azel_loc(ras[i],decs[i],lat,lon,elevation,time,idate)
         if sin_alt>=0:
-            alts.append(sin_alt)
-            azs.append(sin_az)
+            alts[len_a] = sin_alt
+            azs[len_a] = sin_az
     #        freqs_gsm.append(freq_gsm)
-            gsm_array.append(gsmdata[0,i])
-            
-    alts = array(alts)
-    azs = array(azs)
+            gsm_array[len_a] = gsmdata[i]
+            len_a = len_a+1
+
+        
+    alts = array(alts[0:len_a-1])
+    azs = array(azs[0:len_a-1])
     #freqs_gsm = array(freqs_gsm)
-    gsm_array = array(gsm_array)
+    gsm_array = array(gsm_array[0:len_a-1])
 
     gsm_var = vstack((alts,azs)).T
+    alts = []
+    azs = []    
     
     return gsm_array, gsm_var
 
@@ -167,14 +178,21 @@ def ant_beam(gsm_array, gsm_var, gaindb, sim_var):
 
     grid_alt, grid_az = mgrid[0:pi/2.:90j,0:2.*pi:180j]
 
-    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='linear')
-    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='linear')
-
-    full_beam = pow(10.,0.05*grid_gain)*grid_temp
+    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='nearest')
+    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='nearest')
+    gain_beam = pow(10.,0.05*grid_gain)
+    full_beam = gain_beam*grid_temp
+    nandata = where(isnan(full_beam))
+    for i in range(0,len(nandata[0])):
+        full_beam[nandata[0][i],nandata[1][i]]=0.0
+        gain_beam[nandata[0][i],nandata[1][i]]=0.0
+   
+    print shape(where(isnan(full_beam)))
     
     summed_beam = ma.sum(ma.sum(full_beam,axis=0),axis=0)
-    summed_sim = ma.sum(ma.sum(pow(10.,0.05*grid_gain),axis=0),axis=0)
+    summed_sim = ma.sum(ma.sum(gain_beam,axis=0),axis=0)
 #    print shape(summed_beam)
+
 
     final_result = summed_beam/summed_sim
 
