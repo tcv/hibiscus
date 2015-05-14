@@ -1,5 +1,6 @@
 from numpy import *
 import pylab
+import numpy
 import scipy.interpolate as itp
 import numpy.ma as ma
 from scipy import optimize
@@ -60,7 +61,7 @@ def antenna_beam_pattern(filename,input_freqs):
 
     return freq_array,theta_array,phi_array,gaindb
 
-def gsm_temps(gsmdir,input_freqs):
+def gsm_temps(gsmdir,input_freqs,inds):
     """
     loads the gsm data into a temperature array,
     with corresponding freq array (ra/dec arrays from get_gsm_radec). 
@@ -75,10 +76,41 @@ def gsm_temps(gsmdir,input_freqs):
 #    gsmdata.append(single)
 #    single = []
  
-#    gsmdata = array(gsmdata)
+    gsmdata = array(gsmdata)
 
-    return freqs, gsmdata
+    used_data = zeros(len(inds))
+    for i in range(0,len(inds)):
+        used_data[i] =gsmdata[inds[i]]
 
+    return freqs,used_data
+
+def trunc_gsm(ras,decs,ra_var,dec_var):
+    """
+    Shrinks down the size of the gsmdata array
+    """
+    new_ras = zeros(ra_var*dec_var)
+    new_decs = zeros(ra_var*dec_var)
+    diff = (360.+180.)*ones(len(new_ras))
+    new_gsm = zeros(ra_var*dec_var)
+    rwid = ra_var/180.
+    dwid = dec_var/360.
+    rlist = arange(0,180+rwid,1/rwid)
+    dlist = arange(0,360+dwid,1/dwid)
+    for i in range(0,ra_var):
+        for j in range(0,dec_var):
+            new_decs[i*dec_var+j] = rlist[i]
+            new_ras[i*dec_var+j] = dlist[j]
+     
+    for a in range(0,len(ras)):
+        value = abs(new_ras-ras[a]*ones(len(new_ras)))+abs(new_decs-decs[a]*ones(len(new_decs)))
+        ind = argmin(value)
+        val = amin(value)
+        if val<diff[ind]:
+            diff[ind] = val
+            new_gsm[ind] = a
+   
+
+    return new_ras,new_decs,new_gsm
 
 def azel_loc(ra,dec,lat,lon,elevation,time,idate):
     """
@@ -86,7 +118,6 @@ def azel_loc(ra,dec,lat,lon,elevation,time,idate):
     alt runs from -pi/2 to pi/2
     az  runs from 0 to 2 pi
     """
-    
     site = eph.Observer()
     site.lon = lon
     site.lat = lat
@@ -94,17 +125,16 @@ def azel_loc(ra,dec,lat,lon,elevation,time,idate):
     date = eph.date(idate)+time/24.
     site.date = date
     site.pressure =0
-
     curr_ra = eph.degrees(ra*pi/180.)
     curr_dec = eph.degrees(dec*pi/180.)
-    db_entry = "curr_pt,f/J,"+str(curr_ra)+","+str(curr_dec)+",-1"
-    point = eph.readdb(db_entry)
-
+    point = eph.FixedBody()
+    point._ra = curr_ra
+    point._dec = curr_dec
+#    db_entry = "curr_pt,f/J,"+str(curr_ra)+","+str(curr_dec)+",-1"
+#    point = eph.readdb(db_entry)
     point.compute(site)
-
     cur_alt = point.alt
     cur_az = point.az
-
     return cur_alt, cur_az
 
 # At this point I have two data arrays, for the simulation and gsm data.
@@ -175,13 +205,21 @@ def ant_beam(gsm_array, gsm_var, gaindb, sim_var):
     Note I've limited the frequency range that is loaded to avoid memory errors
     Re-wrote to limit to a single frequency 
     """
-
-    grid_alt, grid_az = mgrid[0:pi/2.:90j,0:2.*pi:180j]
+    adj = 0.001
+    grid_alt, grid_az = numpy.mgrid[0+adj:pi/2.-adj:180j,0+adj:2.*pi-adj:720j]
 
     grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='nearest')
-    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='nearest')
+    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='cubic')
+    
+#    func_gain = itp.bisplrep(sim_var[:,0],sim_var[:,1],gaindb,s=0)
+#    grid_gain = itp.bisplev(grid_alt[:,0],grid_az[0,:],func_gain)
+#    func_temp = itp.bisplrep(gsm_var[:,0],gsm_var[:,1],gsm_array,s=0)
+#    grid_temp = itp.bisplev(grid_alt[:,0],grid_az[0,:],func_temp)
+      
     gain_beam = pow(10.,0.05*grid_gain)
     full_beam = gain_beam*grid_temp
+    
+
     nandata = where(isnan(full_beam))
     for i in range(0,len(nandata[0])):
         full_beam[nandata[0][i],nandata[1][i]]=0.0
@@ -193,6 +231,8 @@ def ant_beam(gsm_array, gsm_var, gaindb, sim_var):
     summed_sim = ma.sum(ma.sum(gain_beam,axis=0),axis=0)
 #    print shape(summed_beam)
 
+    grid_gain = []
+    grid_temp = []
 
     final_result = summed_beam/summed_sim
 

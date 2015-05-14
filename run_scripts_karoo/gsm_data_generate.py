@@ -29,7 +29,7 @@ def main(gsm_times):
     lon = '21.4109'
     lat = '-30.7216'
     elevation = 1080
-    gsm_freq = arange(50,110,1)
+    gsm_freq = arange(50,111,1)
     
 #gsm_freq = sys.argv[1]
 #gsm_times = arange(0,24.,0.05)
@@ -51,15 +51,34 @@ def main(gsm_times):
     gsm_data = zeros(len(gsm_freq))
 #sid_times = zeros(len(gsm_times))
     ras,decs = gf.get_gsm_radec(radecfile)
+#    nras,ndecs,gsm_ind = gf.trunc_gsm(ras,decs,9,18)
+#    print shape(nras),shape(ndecs),shape(gsm_ind)
 #time = float(gsm_times)
     find = 0
     tind = 0
 #gsm_array, gsm_var = gf.gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate)
     for freq in gsm_freq:
         gaindb, sim_var = gf.sim_comp(beamfile,freq)
-        freq_gsm, gsmdata = gf.gsm_temps(gsmdir,freq)
+        gsm_ind = arange(0,len(ras))
+        freq_gsm, gsmdata = gf.gsm_temps(gsmdir,freq,gsm_ind)
 #for time in gsm_times:
+
         gsm_array, gsm_var = gf.gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate)
+
+
+        print shape(gsm_array), shape(gsm_var)
+        print shape(gaindb),shape(sim_var)
+#        adj = 0.001
+#        grid_alt, grid_az = numpy.mgrid[0+adj:pi/2.-adj:90j,0+adj:2.*pi-adj:180j]
+#        print shape(grid_alt),shape(grid_az) 
+#        print where(isnan(gsm_array))
+#        print where(isnan(gsm_var))
+#        print where(isinf(gsm_array))
+#        print where(isinf(gsm_var))
+#        print gsm_array, gsm_var
+        print where(isnan(sim_var)),where(isnan(gaindb))
+        print where(isinf(sim_var)),where(isnan(gaindb))
+
         fr = gf.ant_beam(gsm_array,gsm_var, gaindb, sim_var)
         print 'Temperature value is: ', fr
         print 'Frequency is: ', freq
