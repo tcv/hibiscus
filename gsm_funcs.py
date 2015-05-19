@@ -34,50 +34,119 @@ def antenna_beam_pattern(filename,input_freqs):
     freq_array = zeros(181*181)
     theta_array = zeros(181*181)
     phi_array = zeros(181*181)
-    gaindb = zeros(181*181)
+    gaindb = -50.*ones(181*181)
+    theta_array2 = zeros(181*181)
+    phi_array2 = zeros(181*181)
+    gaindb2 = -50.*ones(181*181)
+    larger = 0
+    freq1 = 0
+    freq2 = 0
+
+#    print len(theta_array), 181*181
    
     f = open(filename)
 
     for line in range(0,21,1):
         singlef = f.readline()
-#        print singlef.split(' ')[0],input_freqs
+#        print float(singlef.split('  ')[0]),float(input_freqs)
         for phi in range(0,181,1):
             for theta in range(0,181,1):
                 singleline= f.readline()
 #                if (float(singlef.split('  ')[0])>=float(input_freqs)):
-                if abs(float(singlef.split(' ')[0])-float(input_freqs))<=0.5:
+#                if abs(float(singlef.split(' ')[0])-float(input_freqs))<1.0:
 #                    if (float(singlef.split('  ')[0])<input_freqs+3.):
+                if (float(singlef.split('  ')[0])-float(input_freqs))<=0.0:
                     theta_array[phi*181+theta] = (float(singleline.split('  ')[0]))
                     phi_array[phi*181+theta] = (float(singleline.split('  ')[1]))
                     gaindb[phi*181+theta] = (float(singleline.split('  ')[2]))
-                    freq_array[phi*181+theta] = (float(singlef.split(' ')[0]))
+                    freq1 = float(singlef.split('  ')[0])
+#                    freq2 = freq1
+#                    freq_array[phi*181+theta] = (float(singlef.split(' ')[0]))
+                if (float(singlef.split('  ')[0])-float(input_freqs))==0.:
+                    theta_array[phi*181+theta] = (float(singleline.split('  ')[0]))
+                    phi_array[phi*181+theta] = (float(singleline.split('  ')[1]))
+                    gaindb[phi*181+theta] = (float(singleline.split('  ')[2]))
+                    freq1 = float(singlef.split('  ')[0])
+                    freq2 = freq1
+                if (float(singlef.split('  ')[0])-float(input_freqs))>0.:
+                    if freq1!=freq2:
+                        if larger<(181*181):
+                            theta_array2[phi*181+theta] = (float(singleline.split('  ')[0]))
+                            phi_array2[phi*181+theta] = (float(singleline.split('  ')[1]))
+                            gaindb2[phi*181+theta] = (float(singleline.split('  ')[2]))
+                            larger = larger + 1
+                            freq2 = float(singlef.split('  ')[0]) 
+#                    else:
+#                        print larger
+#                    freq_array[phi*181+theta] = (float(singlef.split(' ')[0]))
+
     f.close()
+#    print sum(gaindb),sum(gaindb2)
 
-    freq_array = array(freq_array)
-    theta_array = array(theta_array)
-    phi_array = array(phi_array)
-    gaindb = array(gaindb)
+#    if larger==0:
+    if freq2==0:
+        freq2 = 130.
+
+    if freq1==freq2:
+        gain_act = gaindb
+    else:
+        m = (gaindb-gaindb2)/(freq1-freq2)
+        b = (gaindb)-m*freq1
+        gain_act = m*float(input_freqs)+b
+
+
+#    freq_array = array(freq_array)
+#    theta_array = array(theta_array)
+#    phi_array = array(phi_array)
+#    gaindb = array(gaindb)
+
+
 #    print ma.sum(gaindb)    
+    print "For the Antenna Beam Simulation"
+    print "Input Frequency is: ",input_freqs, " MHz"
+    print "Used Frequencies are: ", freq1," and ", freq2, " MHz"
 
-    return freq_array,theta_array,phi_array,gaindb
+    return freq_array,theta_array,phi_array,gain_act
 
 def gsm_temps(gsmdir,input_freqs,inds):
     """
     loads the gsm data into a temperature array,
     with corresponding freq array (ra/dec arrays from get_gsm_radec). 
     """
-
     
-    freqs = int(input_freqs)
-
-#    gsmdata = []
-    fname = gsmdir+'radec'+str(int(freqs))+'.dat'
-    gsmdata = loadtxt(fname)
-#    gsmdata.append(single)
-#    single = []
- 
-    gsmdata = array(gsmdata)
-
+    if float(input_freqs)>=50.:
+        if float(input_freqs)<=112.:
+            if input_freqs%1.<=0.01:    
+                freqs1 = int(input_freqs)
+                fname = gsmdir+'radec'+str(int(freqs1))+'.dat'
+                gsmdata = loadtxt(fname)
+                freqs2 = freqs1
+            else:
+                freqs1 = float(int(input_freqs))
+                freqs2 = freqs1+1
+                fname1 = gsmdir+'radec'+str(int(freqs1))+'.dat'
+                gsmdata1 = loadtxt(fname1)
+                fname2 = gsmdir+'radec'+str(int(freqs2))+'.dat'
+                gsmdata2 = loadtxt(fname2)
+                m = (gsmdata1-gsmdata2)/(freqs1-freqs2)
+                b = gsmdata1-m*freqs1
+                gsmdata = m*float(input_freqs)+b
+        else:
+            freqs1 = 130.
+            freqs2 = freqs1
+            fname = gsmdir+'radec112.dat'
+            gsmdatat = loadtxt(fname)
+            gsmdata = zeros(len(gsmdatat))
+    else:
+        freqs1 = 40.
+        freqs2 = freqs1
+        fname = gsmdir+'radec50.dat'
+        gsmdatat = loadtxt(fname)
+        gsmdata = zeros(len(gsmdatat)) 
+    
+    print "For the GSM Model Data"
+    print "Input Frequency is: ", input_freqs, " MHz"
+    print "Used Frequencies are: ",freqs1, " and " ,freqs2, " MHz"
     used_data = zeros(len(inds))
     for i in range(0,len(inds)):
         used_data[i] =gsmdata[inds[i]]
@@ -199,7 +268,7 @@ def sim_comp(beamfile,freqs):
     return gaindb, sim_var
     
 
-def ant_beam(gsm_array, gsm_var, gaindb, sim_var):
+def ant_beam(gsm_array, gsm_var, gaindb, sim_var,label):
     """
     Combines the gsm and sim datasets for a given place/time.
     Note I've limited the frequency range that is loaded to avoid memory errors
@@ -208,7 +277,7 @@ def ant_beam(gsm_array, gsm_var, gaindb, sim_var):
     adj = 0.001
     grid_alt, grid_az = numpy.mgrid[0+adj:pi/2.-adj:180j,0+adj:2.*pi-adj:720j]
 
-    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='nearest')
+    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='cubic')
     grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='cubic')
     
 #    func_gain = itp.bisplrep(sim_var[:,0],sim_var[:,1],gaindb,s=0)
@@ -219,6 +288,26 @@ def ant_beam(gsm_array, gsm_var, gaindb, sim_var):
     gain_beam = pow(10.,0.05*grid_gain)
     full_beam = gain_beam*grid_temp
     
+    pylab.subplot(311)
+    pylab.imshow(gain_beam,vmin=0,vmax=3.,extent=(0,360.,0.,90.))
+    pylab.colorbar() 
+#    pylab.xlabel('Azimuth (degrees)')
+    pylab.ylabel('Altitude (degrees)')
+    pylab.title('HIbiscus Beam (linear power)')
+    pylab.subplot(312)
+    pylab.imshow(grid_temp,vmin=0,vmax=2e4,extent=(0,360.,0.,90.))
+    pylab.colorbar()
+#    pylab.xlabel('Azimuth (degrees)') 
+    pylab.ylabel('Altitude (degrees)')
+    pylab.title('GSM Data (Kelvin)')
+    pylab.subplot(313) 
+    pylab.imshow(full_beam,vmin=0,vmax=2e4,extent=(0,360.,0.,90.))
+    pylab.colorbar() 
+    pylab.xlabel('Azimuth (degrees)')  
+    pylab.ylabel('Altitude (degrees)')
+    pylab.title('Expected Signal (Kelvin)')
+    pylab.savefig(label,dpi=300)
+    pylab.clf()
 
     nandata = where(isnan(full_beam))
     for i in range(0,len(nandata[0])):

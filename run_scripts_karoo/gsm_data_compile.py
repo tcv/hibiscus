@@ -25,7 +25,7 @@ idate = '2015/4/1'
 lon = '21.4109'
 lat = '-30.7216'
 elevation = 1080
-gsm_freq = arange(50,110,1)
+gsm_freq = arange(50,111,1)
 
 dirlist = os.listdir(indir)
 full_data = zeros((len(dirlist),len(gsm_freq)))
@@ -47,7 +47,7 @@ for i in range(0,len(full_times)):
     sorttime[i] = full_times[sortind[i]]
     sortdata[i] = full_data[sortind[i]]
 
-pylab.imshow(sortdata,vmin=0,vmax = 5000,aspect = 060./24., extent=(gsm_freq[0],gsm_freq[-1],sorttime[-1],sorttime[0]))
+pylab.imshow(sortdata,vmin=0,vmax = 10000,aspect = 060./24., extent=(gsm_freq[0],gsm_freq[-1],sorttime[-1],sorttime[0]))
 pylab.colorbar()
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Sidereal Time (Hours)')
@@ -60,7 +60,7 @@ pylab.plot(gsm_freq,sortdata[len(sortdata)/4])
 pylab.plot(gsm_freq,sortdata[len(sortdata)/2])
 pylab.plot(gsm_freq,sortdata[3*len(sortdata)/4])
 pylab.xlim(50,110)
-pylab.ylim(0,7000)
+pylab.ylim(0,10000)
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.savefig(outdir+'Sample_GSM_Temp_70_Karoo.png')
