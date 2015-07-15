@@ -24,6 +24,10 @@ import eff_funcs as ef
 import ephem as eph
 import errno
 
+indir = sys.argv[1]
+outdir= '../../supplemental_data/'
+supdir = '../../supplemental_data/'
+
 
 gbt_idate = '2013/5/1'
 gbt_lat = '38.433'
@@ -37,14 +41,9 @@ karoo_idate = '2015/4/1'
 karoo_lat = '-30.7216'
 karoo_lon = '21.4109'
 
-gsm_data = numpy.load('../../supplemental_data/gsm_data_full_70_Karoo.npy')
-gsm_times = numpy.load('../../supplemental_data/gsm_sid_time_full_70_Karoo.npy')
+gsm_data = numpy.load(supdir+'gsm_data_full_70_Karoo.npy')
+gsm_times = numpy.load(supdir+'gsm_sid_time_full_70_Karoo.npy')
 gsm_freqs = arange(50,111,1)
-#indir = $data_dir+'Karoo_data_npy/'+'Apr03_70/'
-indir = sys.argv[1]
-outdir= '../../supplemental_data/'
-#plotdir = '../../Karoo_data_npy_plts/'
-#plotdir=indir
 directories = os.listdir(indir)
 data = []
 times = []

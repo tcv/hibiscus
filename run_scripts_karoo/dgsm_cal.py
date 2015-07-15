@@ -145,7 +145,7 @@ for i in range(0,len(freqs)):
     sortmask[:,i] = new_mask
 
 for i in range(0,len(sortdata)):
-    new_mask = ff.threshold_flag(sortdata[i],sortmask[i],freqs,50.)
+    new_mask = ff.threshold_flag(sortdata[i],sortmask[i],freqs,75.)
     sortmask[i] = new_mask
 
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
@@ -220,7 +220,7 @@ pylab.xlabel('Sidereal Time (Hours)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.grid()
 pylab.scatter(lim_time,Kdgsm[f70_data]*lim_ms_stack[:,f70_data],label='cal data',c='g',edgecolor='g',s=3)
-pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[2]+'_70_MHz.png',dpi=300)
+pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_70_MHz.png',dpi=300)
 pylab.clf()
 
 
@@ -236,7 +236,7 @@ pylab.xlim(40,130)
 pylab.grid()
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
-pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[2]+'_mean.png',dpi=300)
+pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_mean.png',dpi=300)
 pylab.clf()
 
 Kfit,Kparams = cf.poly_fore(mean_data*Kdgsm,mean_mask,freqs,60.,90.,2,ones(len(mean_data)))
@@ -251,7 +251,7 @@ pylab.xlim(50,100)
 pylab.ylim(-100,100)
 pylab.grid()
 pylab.xlabel('Frequency (MHz)')
-pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[2]+'_mean_fit.png',dpi=300)
+pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_mean_fit.png',dpi=300)
 pylab.clf()
 
 cal_data = zeros((len(sortstack),len(sortstack[0])))
@@ -268,7 +268,7 @@ pylab.colorbar()
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Sidereal Time (Hours)')
 pylab.title('GSM Calibrated Temperature (Kelvin)')
-pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[2]+'_waterfall.png',dpi=300)
+pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_waterfall.png',dpi=300)
 pylab.clf()
 
 pylab.imshow(cal_data_masked,vmin=0,vmax=1e4,aspect=90./24.,extent=(freqs[0],freqs[-1],gsm_times[-1],gsm_times[0]))
@@ -276,8 +276,10 @@ pylab.colorbar()
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Sidereal Time (Hours)')
 pylab.title('Masked GSM Cal Temperature (Kelvin)')
-pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[2]+'_masked_waterfall.png',dpi=300)
+pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_masked_waterfall.png',dpi=300)
 pylab.clf()
 
+numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
+numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
 
 

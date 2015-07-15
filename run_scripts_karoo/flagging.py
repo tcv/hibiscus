@@ -24,7 +24,8 @@ import errno
 import numpy.polynomial.polynomial as poly
 
 indir = sys.argv[1]
-outdir= '../../supplemental_data/'
+outdir = indir
+#outdir= '../../supplemental_data/'
 directories = os.listdir(indir)
 
 #Load files for each hour full day of data. 
@@ -76,7 +77,7 @@ for f in range(0,len(freqs)):
     new_mask = ff.threshold_flag(data[:,f],new_mask[:,f],freqs[f],50.)
     mask[:,f] = new_mask
 
-numpy.save(indir+'/'+date+'_mask.npy',mask)
+numpy.save(outdir+'/'+date+'_mask.npy',mask)
 print shape(mask)
 print 'Percent of Data Flagged from Frequency and Time Masking: ',100.*sum(mask)/(len(mask)*len(mask[0]))
 
