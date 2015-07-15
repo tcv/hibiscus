@@ -1,5 +1,8 @@
 """
-Module to create gsm data for a given location. 
+Module to combine gsm data for all sidereal times into a single file for a given location and antenna.
+
+Also makes plots of the gsm model data. 
+
 """
 import matplotlib
 matplotlib.use('Agg')
@@ -33,12 +36,13 @@ full_times = zeros(len(dirlist))
 tind= 0
 
 for fname in dirlist:
-    time_label = fname.split('_')[-3]
-    time = float(time_label.split('-')[0])+float(time_label.split('-')[1])/60.+float(time_label.split('-')[2])/3600.
-    data = numpy.load(indir+fname)
-    full_data[tind] = data
-    full_times[tind] = time
-    tind = tind+1
+    if fname.split('.')[-1]=='npy':
+        time_label = fname.split('_')[-3]
+        time = float(time_label.split('-')[0])+float(time_label.split('-')[1])/60.+float(time_label.split('-')[2])/3600.
+        data = numpy.load(indir+fname)
+        full_data[tind] = data
+        full_times[tind] = time
+        tind = tind+1
 
 sortind = argsort(full_times)
 sorttime = zeros(len(full_times))
@@ -64,6 +68,19 @@ pylab.ylim(0,10000)
 pylab.xlabel('Frequency (MHz)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.savefig(outdir+'Sample_GSM_Temp_70_Karoo.png')
+pylab.clf()
+
+
+pylab.plot(sorttime,sortdata[:,19],label='70 MHz')
+pylab.plot(sorttime,sortdata[:,9],label='60 MHz')
+pylab.plot(sorttime,sortdata[:,29],label='80 MHz')
+pylab.xlim(0,24.)
+pylab.xlabel('Sidereal Time (Hours)')
+pylab.ylim(0,2e4)
+pylab.ylabel('Temperature (Kelvin)')
+pylab.grid()
+pylab.legend()
+pylab.savefig(outdir+'Sample_GSM_Time_stream_70_Karoo.png')
 pylab.clf()
 
 numpy.save(outdir+'gsm_data_full_70_Karoo.npy',sortdata)

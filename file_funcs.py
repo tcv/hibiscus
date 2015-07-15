@@ -165,22 +165,21 @@ def flagging(data,freq,sigma_thres,linscale):
 def threshold_flag(data,masked,freq,value):
     """
     Flags out RFI above a set cutoff.
-    Cutoff has been defined using value as a multiplicative factor times the average polynomial guess (set to 1 at 70 MHz).
+    Set cutoff based on value at 70 MHz and assume a -2.5 slope.
     """
     new_mask = zeros(len(data))
     for i in range(0,len(data)):
         if masked[i]==1.0:
             new_mask[i] = 1.0
 
-    log_freq = log10(freq/70.)
-    fit_params = [3.5186,-2.6205]
-    dfit = 10**(poly.polyval(log_freq,fit_params))
     f70 = where(freq<=70.)[0][-1]
-    subfit = dfit/dfit[f70]
+    dfit = data[f70]*(freq/70.)**(-2.5)
+    frac = value/100.
     for i in range(0,len(data)):
         if new_mask[i]==0:
-            data_fit = subfit[i]*data[f70]
-            if data[i]>data_fit*value:
+            if data[i]>dfit[i]*(1+frac):
+                new_mask[i] = 1.0
+            elif data[i]<dfit[i]*(1-frac):
                 new_mask[i] = 1.0
 
     return new_mask

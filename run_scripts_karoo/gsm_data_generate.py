@@ -1,5 +1,7 @@
 """
-Module to create gsm data for a given location. 
+Module to create gsm data for a given location and time. 
+Set up to run in parallel using python_for_bash.py and a batch script. 
+Example batch script in /home/tabithav/scripts/mk_gsm.m on hippo.
 """
 import matplotlib
 matplotlib.use('Agg')

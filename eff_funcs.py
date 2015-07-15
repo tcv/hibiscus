@@ -15,16 +15,13 @@ def imped(ant_data,cable_len):
     Can add a phase shift if needed.
     Also outputs the frequency in MHz.
     """
-    real = []
-    imag = []
-    freq = []
+    real = zeros(len(ant_data))
+    imag = zeros(len(ant_data))
+    freq = zeros(len(ant_data))
     for i in range(0,len(ant_data)):
-        real.append(ant_data[i][1])
-        imag.append(ant_data[i][2])
-        freq.append(ant_data[i][0])
-    real = array(real)
-    imag = array(imag)
-    freq = array(freq)
+        real[i] = [i][1]
+        imag[i] = ant_data[i][2]
+        freq[i] = ant_data[i][0]
     gamma = sqrt(real**2+imag**2)
     phi_gamma = arctan2(imag, real)
     delta_phi = cable_len*1.25E-10*2*pi*freq
@@ -44,24 +41,18 @@ def imped_skrf(file_name,time_delay):
     Also outputs the frequency in MHz.
     """
     data = rf.Network(file_name)
-    real_data = []
-    imag_data = []
-    freq_data = []
-    mag_data = []
-    phase_data = []
+    real_data = zeros(len(data.s))
+    imag_data = zeros(len(data.s))
+    freq_data = zeros(len(data.s))
+    mag_data = zeros(len(data.s))
+    phase_data = zeros(len(data.s))
     for i in range(0,len(data.s)):
-        real_data.append(real(data.s[i][0][0]))
-        imag_data.append(imag(data.s[i][0][0]))
-        freq_data.append(data.f[i])
-        mag_data.append(absolute(data.s[i][0][0]))
-        phase_data.append(angle(data.s[i][0][0]))
+        real_data[i] = real(data.s[i][0][0])
+        imag_data[i] = imag(data.s[i][0][0])
+        freq_data[i] = data.f[i]
+        mag_data[i] = absolute(data.s[i][0][0])
+        phase_data[i] = angle(data.s[i][0][0])
 
-    freq_data = array(freq_data)
-    imag_data = array(imag_data)
-    real_data = array(real_data)
-    mag_data = array(mag_data)
-    phase_data = array(phase_data)
-    
     delta_phi = time_delay*2*pi*freq_data
     real_mod = mag_data*cos(phase_data+delta_phi)
     imag_mod = mag_data*sin(phase_data+delta_phi)

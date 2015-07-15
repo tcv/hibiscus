@@ -27,16 +27,16 @@ def match_binning(gsm_time,freq,time,data,mask):
     stack_data = zeros((len(stack_time),len(freq)))
     stack_mask = zeros((len(stack_time),len(freq)))
     for i in range(0,len(stack_time)):
-        sub_data = []
-        sub_mask = []
+        sub_data = zeros((len(time),len(freq)))
+        sub_mask = zeros((len(time),len(freq)))
         num_mean = 0.
         for j in range(0,len(time)):
             if abs(stack_time[i]-time[j])<=(stack_time[1]-stack_time[0])/2.:
-                sub_data.append(data[j])
-                sub_mask.append(mask[j])
+                sub_data[num_mean] = data[j]
+                sub_mask[num_mean] = mask[j]
                 num_mean = num_mean+1.
-        sub_data = array(sub_data)
-        sub_mask = array(sub_mask)
+        sub_data = sub_data[0:num_mean]
+        sub_mask = sub_mask[0:num_mean]
         if num_mean>=1.0:
             for f in range(0,len(freq)):
                 if sum(sub_mask[:,f])==len(sub_mask[:,f]):
@@ -69,22 +69,24 @@ def lim_bin(freq,data,mask,gsm_freq,gsm_data,gsm_time):
     lim_gsm = matching gsm array
     lim_time = matching time array
     """
-    lim_stack = []
-    lim_mask = []
-    lim_gsm = []
-    lim_time = []
+    lim_stack = zeros((len(data),len(data[0])))
+    lim_mask = zeros((len(data),len(data[0])))
+    lim_gsm = zeros((len(data),len(data[0])))
+    lim_time = zeros(len(data))
+    int = 0
     
     for i in range(0,len(data)):
         if sum(data[i])>0.:
-            lim_stack.append(data[i])
-            lim_mask.append(mask[i])
+            lim_stack[int] = data[i]
+            lim_mask[int] =mask[i] 
             single_smooth = itp.UnivariateSpline(gsm_freq,gsm_data[i])
-            lim_gsm.append(single_smooth(freq))
-            lim_time.append(gsm_time[i])
-    lim_stack = array(lim_stack)
-    lim_gsm = array(lim_gsm)
-    lim_mask = array(lim_mask)
-    lim_time = array(lim_time)
+            lim_gsm[int] = single_smooth(freq)
+            lim_time[int] =  gsm_time[i]
+            int +=1
+    lim_stack = lim_stack[0:int]
+    lim_gsm = lim_gsm[0:int]
+    lim_mask = lim_mask[0:int]
+    lim_time = lim_time[0:int]
 
     return lim_stack, lim_mask, lim_gsm, lim_time
 
@@ -92,14 +94,15 @@ def time_mean(data,mask):
     """
     Calculates time mean for a 2 d array (1st ind time, 2nd ind freq).
     """
-    mean_data = []
-    mean_mask = []
+    mean_data = zeros(len(data[0]))
+    mean_mask = zeros(len(data[0]))
     data = array(data)
     mask = array(mask)
     print shape(data),shape(mask)
     num_time = len(mask)
     num_freq = len(mask[0])
-    mod_mask = []
+    mod_mask = zeros((num_time,num_freq))
+    int = 0
 
     for i in range(0,num_time):
         single_mask = mask[i]
@@ -107,23 +110,28 @@ def time_mean(data,mask):
             new_mask = ones(len(single_mask))
         else:
             new_mask = zeros(len(single_mask))
-        mod_mask.append(new_mask)
+        mod_mask[int] = new_mask
+        int +=1
 
+#    mod_mask = mod_mask[0:int]
     mod_mask = array(mod_mask)
+    int2 = 0 
     for i in range(0,num_freq):
         single_mask = mod_mask[:,i]
         bad_num = sum(single_mask)
         if num_time<=bad_num:
-            mean_data.append(0.0)
-            mean_mask.append(1.0)
+            mean_data[int2] = 0.0
+            mean_mask[int2] = 1.0
+#            int2+=1
         else:
             single = ma.array(data[:,i],mask=single_mask)
             single_comp = ma.compressed(single)
-            mean_data.append(ma.mean(single_comp))
-            mean_mask.append(0.0)
+            mean_data[int2]= ma.mean(single_comp)
+            mean_mask[int2] = 0.0
+        int2+=1
     
-    mean_data = array(mean_data)
-    mean_mask = array(mean_mask)
+#    mean_data = mean_data[0:int2]
+#    mean_mask = mean_mask[0:int2]
 
     return mean_data,mean_mask
 
@@ -155,6 +163,7 @@ def poly_fore(data,masked,freq,minf,maxf,n,std):
     freq - corresponding frequency array
     minf, maxf - min and max freq if want to truncate range 
     n - index of polynomial fitting
+    std - 1/weights, set to ones if not needed.
     Output:
     dfit - polynomial fit spectrum
     fit_params - parameters for the fit

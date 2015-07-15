@@ -8,6 +8,8 @@ import os
 import skrf as rf
 import ephem as eph
 import numpy.polynomial.polynomial as poly
+from matplotlib import cm
+import matplotlib.pyplot as plt
 
 def get_gsm_radec(filename):
     """
@@ -18,6 +20,7 @@ def get_gsm_radec(filename):
     file = loadtxt(filename)
     ra_array = file[:,1]
     dec_array = 90.*ones(len(file))-file[:,0]
+#    dec_array = file[:,0]
     file = []
 
     ra_array = array(ra_array)
@@ -252,7 +255,6 @@ def sim_comp(beamfile,freqs):
 
     theta_sim = theta_sim*pi/180.
     phi_sim = phi_sim*pi/180.
-
     alt_sim = zeros(len(phi_sim))
     az_sim = zeros(len(phi_sim))
     for p in range(0,len(phi_sim)):
@@ -277,51 +279,71 @@ def ant_beam(gsm_array, gsm_var, gaindb, sim_var,label):
     adj = 0.001
     grid_alt, grid_az = numpy.mgrid[0+adj:pi/2.-adj:180j,0+adj:2.*pi-adj:720j]
 
-    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='cubic')
-    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='cubic')
-    
-#    func_gain = itp.bisplrep(sim_var[:,0],sim_var[:,1],gaindb,s=0)
-#    grid_gain = itp.bisplev(grid_alt[:,0],grid_az[0,:],func_gain)
-#    func_temp = itp.bisplrep(gsm_var[:,0],gsm_var[:,1],gsm_array,s=0)
-#    grid_temp = itp.bisplev(grid_alt[:,0],grid_az[0,:],func_temp)
+#    grid_gain = itp.griddata(sim_var,gaindb,(grid_alt,grid_az),method='cubic')
+#    grid_temp = itp.griddata(gsm_var,gsm_array,(grid_alt,grid_az),method='cubic')
+#    print amax(gsm_var[:,0]),amin(gsm_var[:,0])
+#    print amax(gsm_var[:,1]),amin(gsm_var[:,0])
+#    print shape(gsm_var)
+    func_gain = itp.CloughTocher2DInterpolator(sim_var,gaindb)
+    gsm_gain = func_gain(gsm_var)
+    print shape(gsm_gain)
+#    func_temp = itp.Rbf(gsm_var[:,0],gsm_var[:,1],gsm_array)
+#    grid_temp = func_temp(grid_alt[:,0],grid_az[0,:])
+#    grid_gain = func_gain(grid_alt[:,0],grid_az[0,:])
       
-    gain_beam = pow(10.,0.05*grid_gain)
-    full_beam = gain_beam*grid_temp
-    
-    pylab.subplot(311)
-    pylab.imshow(gain_beam,vmin=0,vmax=3.,extent=(0,360.,0.,90.))
-    pylab.colorbar() 
-#    pylab.xlabel('Azimuth (degrees)')
-    pylab.ylabel('Altitude (degrees)')
-    pylab.title('HIbiscus Beam (linear power)')
-    pylab.subplot(312)
-    pylab.imshow(grid_temp,vmin=0,vmax=2e4,extent=(0,360.,0.,90.))
-    pylab.colorbar()
-#    pylab.xlabel('Azimuth (degrees)') 
-    pylab.ylabel('Altitude (degrees)')
-    pylab.title('GSM Data (Kelvin)')
-    pylab.subplot(313) 
-    pylab.imshow(full_beam,vmin=0,vmax=2e4,extent=(0,360.,0.,90.))
-    pylab.colorbar() 
-    pylab.xlabel('Azimuth (degrees)')  
-    pylab.ylabel('Altitude (degrees)')
-    pylab.title('Expected Signal (Kelvin)')
-    pylab.savefig(label,dpi=300)
-    pylab.clf()
+#    gain_beam = pow(10.,0.05*grid_gain)
+#    full_beam = gain_beam*grid_temp
+    gain_beam = pow(10.,0.05*gsm_gain)
+    full_beam = gain_beam*gsm_array
 
     nandata = where(isnan(full_beam))
     for i in range(0,len(nandata[0])):
-        full_beam[nandata[0][i],nandata[1][i]]=0.0
-        gain_beam[nandata[0][i],nandata[1][i]]=0.0
-   
+        full_beam[nandata[0][i]]=0.0
+        gain_beam[nandata[0][i]]=0.0
+
     print shape(where(isnan(full_beam)))
-    
+
     summed_beam = ma.sum(ma.sum(full_beam,axis=0),axis=0)
     summed_sim = ma.sum(ma.sum(gain_beam,axis=0),axis=0)
-#    print shape(summed_beam)
+    print amax(full_beam/summed_sim)
+    
 
-    grid_gain = []
-    grid_temp = []
+#    n = plt.Normalize(0.,90.)
+#    f,(plt1,plt2,plt3) = plt.subplots(3,1,sharex=True)
+#    f.xlim(0,360)
+    plt.subplot(311)
+#    pylab.imshow(pow(10.,0.05*grid_gain),vmin=0,vmax=3.,extent=(0,360.,0.,90.))
+    plt.scatter(gsm_var[:,1]*180./pi,90.-gsm_var[:,0]*180./pi,s=1,linewidth=0,c=gain_beam,vmin=0,vmax=3,cmap=cm.jet)
+    plt.colorbar() 
+    plt.xlim(0,360)
+    plt.ylim(0,90)
+#    pylab.xlabel('Azimuth (degrees)')
+    plt.ylabel('Altitude (degrees)')
+    plt.title('HIbiscus Beam (linear power)')
+    plt.subplot(312)
+#    pylab.imshow(grid_temp,vmin=0,vmax=2e4,extent=(0,360.,0.,90.))
+    plt.scatter(gsm_var[:,1]*180./pi,90.-gsm_var[:,0]*180./pi,s=1,linewidth=0,c=gsm_array,vmin=0,vmax=2e4,cmap=cm.jet)
+    plt.colorbar()
+    plt.xlim(0,360)
+    plt.ylim(0,90)
+#    pylab.xlabel('Azimuth (degrees)') 
+    plt.ylabel('Altitude (degrees)')
+    plt.title('GSM Data (Kelvin)')
+    plt.subplot(313) 
+#    pylab.imshow(pow(10.,0.05*grid_gain)*grid_temp,vmin=0,vmax=2e4,extent=(0,360.,0.,90.))
+    plt.scatter(gsm_var[:,1]*180./pi,90.-gsm_var[:,0]*180./pi,s=1,linewidth=0,c=full_beam,vmin=0,vmax=5e4,cmap=cm.jet)
+    plt.colorbar() 
+    plt.xlim(0,360)
+    plt.ylim(0,90)
+    plt.xlabel('Azimuth (degrees)')  
+    plt.ylabel('Altitude (degrees)')
+    plt.title('Expected Signal (Kelvin)')
+    plt.subplots_adjust(hspace=0.4)
+    plt.savefig(label,dpi=300)
+    plt.clf()
+
+#    grid_gain = []
+#    grid_temp = []
 
     final_result = summed_beam/summed_sim
 
