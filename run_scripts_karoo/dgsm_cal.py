@@ -122,6 +122,7 @@ times = times[0:tint]
 
 #Short fit for the given frequency range.
 short_data = poly.polyval(freqs,fitshort)
+st,sf,short_data,sm,sf,sv,ste = ff.loadsingle(supdir+'2015-04-05-00-06-26_Ch_2_noisetrunc.dat')
 
 #Convert data times to sidereal times and sort.
 sid_times = zeros(len(times))
@@ -135,9 +136,10 @@ sortdata = zeros((len(sid_times),len(data[0])))
 sortmask = zeros((len(sid_times),len(data[0])))
 for i in range(0,len(sid_times)):
     sorttime[i] = sid_times[sortind[i]]
-#    sortdata[i] = data[sortind[i]]
+    sortdata[i] = data[sortind[i]]
     sortmask[i] = mask[sortind[i]]
-    sortdata[i] = (data[sortind[i]]-short_data)/Eff_sm(freqs)
+#    sortdata[i] = (data[sortind[i]]-short_data)/Eff_sm(freqs)
+#    sortdata[i] = data[sortind[i]]-short_data
 
 #Adding in Time Masking/threshold masking
 for i in range(0,len(freqs)):
@@ -281,5 +283,5 @@ pylab.clf()
 
 numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
 numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
-
+numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
 

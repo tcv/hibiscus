@@ -175,19 +175,118 @@ def poly_fore(data,masked,freq,minf,maxf,n,std):
     freq_comp = ma.compressed(freq_array)
     std_comp = ma.compressed(ma.array(std, mask=masked))
 
-
     min_ind = 0
     max_ind = -1
     if minf>freq_comp[0]:
         min_ind = where(freq_comp<=minf)[0][-1]
     if maxf<freq_comp[-1]:
         max_ind = where(freq_comp<=maxf)[0][-1]
+    mid_ind = min_ind+(max_ind-min_ind)/2
 
     log_data = log10(data_comp[min_ind:max_ind])
-    log_freq = log10(freq_comp[min_ind:max_ind]/70.)
+    log_freq = log10(freq_comp[min_ind:max_ind]/freq_comp[mid_ind])
     weights = 1/std_comp[min_ind:max_ind]
     
     fit_params = poly.polyfit(log_freq,log_data,n,w=weights)
-    dfit = 10**(poly.polyval(log10(freq/70.),fit_params))
+    dfit = 10**(poly.polyval(log10(freq/freq_comp[mid_ind]),fit_params))
 
     return dfit, fit_params
+
+def rational_fit(n,m):
+    """
+    Sets a rational fit for polynomial factors between 0 and 4.
+    """
+
+    if n==m:
+        if n==0:
+            fitfunc = lambda p,x: p[0]
+        elif n==1:
+            fitfunc = lambda p,x: (p[0]+p[1]*x)/(p[2]+p[3]*x)
+        elif n==2:
+            fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2)/(p[3]+p[4]*x+p[5]*x**2)
+        elif n==3:
+            fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3)/(p[4]+p[5]*x+p[6]*x**2+p[7]*x**3)
+        else:
+            fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/(p[5]+p[6]*x+p[7]*x**2+p[8]*x**3+p[9]*x**4)    
+    else:
+        if n==1:
+            if m==0:
+                fitfunc = lambda p,x: (p[0]+p[1]*x)/p[2]
+            elif m==2:
+                fitfunc = lambda p,x: (p[0]+p[1]*x)/(p[2]+p[3]*x+p[4]*x**2)
+            elif m==3:
+                fitfunc = lambda p,x: (p[0]+p[1]*x)/(p[2]+p[3]*x+p[4]*x**2+p[5]*x**3)
+            else:
+                fitfunc = lambda p,x: (p[0]+p[1]*x)/(p[2]+p[3]*x+p[4]*x**2+p[5]*x**3+p[6]*x**4)
+
+        elif n==2:
+            if m==0:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2)/p[3]
+            elif m==1:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2)/(p[3]+p[4]*x)
+            elif m==3: 
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2)/(p[3]+p[4]*x+p[5]*x**2+p[6]*x**3)
+            else:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2)/(p[3]+p[4]*x+p[5]*x**2+p[6]*x**3+p[7]*x**4)
+
+        elif n==3:
+            if m==0:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3)/p[4]
+            elif m==1:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3)/(p[4]+p[5]*x)
+            elif m==2:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3)/(p[4]+p[5]*x+p[6]*x**2)
+            else:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3)/(p[4]+p[5]*x+p[6]*x**2+p[7]*x**3+p[8]*x**4)
+
+        else:
+            if m==0:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/p[5]
+            elif m==1:
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/(p[5]+p[6]*x)
+            elif m==2: 
+                fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/(p[5]+p[6]*x+p[7]*x**2)
+            else:
+                fitfunc =  lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/(p[5]+p[6]*x+p[7]*x**2+p[8]*x**3)
+  
+    return  fitfunc 
+
+def rat_fore(data,masked,freq,minf,maxf,n,m):
+    """
+    Calculates a rational function fit for the data.
+    Inputs:
+    data - single frequency dependent spectrum
+    masked - corresponding mask
+    freq - corresponding frequency array
+    minf, maxf - min and max freq if want to truncate range
+    n - index of numerator polynomial fitting
+    m - index of denominator polynomial fitting
+    (4>= n,m >=1)
+    Output:
+    dfit - polynomial fit spectrum
+    fit_params - parameters for the fit
+    """ 
+    data_array = ma.array(data,mask=masked)
+    data_comp = ma.compressed(data_array)
+    freq_array = ma.array(freq,mask=masked)
+    freq_comp = ma.compressed(freq_array)
+ 
+    min_ind = 0
+    max_ind = -1
+    if minf>freq_comp[0]:
+        min_ind = where(freq_comp<=minf)[0][-1]
+    if maxf<freq_comp[-1]:
+        max_ind = where(freq_comp<=maxf)[0][-1]
+    mid_ind = min_ind+(max_ind-min_ind)/2 
+ 
+    log_data = log10(data_comp[min_ind:max_ind])
+    log_freq = log10(freq_comp[min_ind:max_ind]/freq_comp[mid_ind])
+    
+    p0 = ones(n+m+2)
+    fitfunc = rational_fit(n,m)
+    errfunc = lambda p,x,y: fitfunc(p,x)-y
+    pf,success = opt.leastsq(errfunc,p0[:],args=(log_freq,log_data))
+#    print pf
+    dfit = 10**(fitfunc(pf,log10(freq/freq_comp[mid_ind])))
+    return dfit,pf
+

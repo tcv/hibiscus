@@ -59,7 +59,7 @@ def main(gsm_times):
 
 #Load GSM file for a given frequency
         gsm_ind = arange(0,len(ras))
-        freq_gsm, gsmdata = gf.gsm_temps(gsmdir,freq,gsm_ind)
+        gsmdata = gf.gsm_temps(gsmdir,freq,gsm_ind)
 
 #Get GSM, az, alt arrays for a given freq, sidereal time
         gsm_array, gsm_var = gf.gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate)
@@ -68,7 +68,7 @@ def main(gsm_times):
 
 #Calculate expected Temperature for the given freq, time
         plot_label = outdir+'plots/gsm_sim_plots_'+time_label+'_hrs_'+str(int(freq))+'_MHz.png'
-        fr = gf.ant_beam(gsm_array,gsm_var, gaindb, sim_var,plot_label)
+        fr = gf.ant_beam(gsm_array,gsm_var, gaindb, sim_var,plot_label,freq)
         print 'Temperature value is: ', fr
         print 'Frequency is: ', freq
         gsm_data[find] = fr

@@ -21,28 +21,32 @@ sys.path.append(os.path.abspath('../../hibiscus'))
 #import gsm_funcs as gf
 
 
-outdir = '../../supplemental_data/'
-indir = '../../supplemental_data/gsm_data_70_Karoo/'
-
+#outdir = '../../supplemental_data/'
+indir = '../../supplemental_data/gsm_data_70_Karoo_test/'
+outdir = indir
 idate = '2015/4/1'
 lon = '21.4109'
 lat = '-30.7216'
 elevation = 1080
 gsm_freq = arange(50,111,1)
 
-dirlist = os.listdir(indir)
-full_data = zeros((len(dirlist),len(gsm_freq)))
-full_times = zeros(len(dirlist))
-tind= 0
+#dirlist = os.listdir(indir)
+#full_data = zeros((len(dirlist),len(gsm_freq)))
+#full_times = zeros(len(dirlist))
+#tind= 0
 
-for fname in dirlist:
-    if fname.split('.')[-1]=='npy':
-        time_label = fname.split('_')[-3]
-        time = float(time_label.split('-')[0])+float(time_label.split('-')[1])/60.+float(time_label.split('-')[2])/3600.
-        data = numpy.load(indir+fname)
-        full_data[tind] = data
-        full_times[tind] = time
-        tind = tind+1
+#for fname in dirlist:
+#    if fname.split('.')[-1]=='npy':
+#        time_label = fname.split('_')[-3]
+#        time = float(time_label.split('-')[0])+float(time_label.split('-')[1])/60.+float(time_label.split('-')[2])/3600.
+#        data = numpy.load(indir+fname)
+#        full_data[tind] = data
+#        full_times[tind] = time
+#        tind = tind+1
+
+
+full_data = numpy.load(indir+'gsm_data_full_70_Karoo.npy')
+full_times = numpy.load(indir+'gsm_sid_time_full_70_Karoo.npy')
 
 sortind = argsort(full_times)
 sorttime = zeros(len(full_times))
@@ -50,6 +54,10 @@ sortdata = zeros((len(full_times),len(gsm_freq)))
 for i in range(0,len(full_times)):
     sorttime[i] = full_times[sortind[i]]
     sortdata[i] = full_data[sortind[i]]
+
+#sortdata = numpy.load(indir+'gsm_data_full_70_Karoo.npy')
+#sorttime = numpy.load(indir+'gsm_sid_time_full_70_Karoo.npy')
+
 
 pylab.imshow(sortdata,vmin=0,vmax = 10000,aspect = 060./24., extent=(gsm_freq[0],gsm_freq[-1],sorttime[-1],sorttime[0]))
 pylab.colorbar()
@@ -83,6 +91,6 @@ pylab.legend()
 pylab.savefig(outdir+'Sample_GSM_Time_stream_70_Karoo.png')
 pylab.clf()
 
-numpy.save(outdir+'gsm_data_full_70_Karoo.npy',sortdata)
-numpy.save(outdir+'gsm_sid_time_full_70_Karoo.npy',sorttime)
+#numpy.save(outdir+'gsm_data_full_70_Karoo.npy',sortdata)
+#numpy.save(outdir+'gsm_sid_time_full_70_Karoo.npy',sorttime)
 

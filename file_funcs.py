@@ -127,9 +127,9 @@ def flagging(data,freq,sigma_thres,linscale):
     """
 
     mask = zeros(len(data))
-    nanmask = array(where(isnan(data))[0])
+    nanmask = where(isnan(data))[0]
     mask[nanmask] = 1.0
-    infmask = array(where(isinf(data))[0])
+    infmask = where(isinf(data))[0]
     mask[infmask] = 1.0
     scale = linscale
     for f in range(0, len(data)/scale-1):
@@ -166,6 +166,8 @@ def threshold_flag(data,masked,freq,value):
     """
     Flags out RFI above a set cutoff.
     Set cutoff based on value at 70 MHz and assume a -2.5 slope.
+    Value is a percentage +/- at which the data is assumed to be bad. 
+    Will only grab large outliers or edges of frequency band. 
     """
     new_mask = zeros(len(data))
     for i in range(0,len(data)):
