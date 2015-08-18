@@ -1,6 +1,6 @@
 """
 Module to generated mask for a given data set. 
-Takes 4 inputs (directory for real data, earliest time file day and hour in that directory, and hour between 0 and 23.)
+Takes 4 inputs (directory for real data, earliest time file day and hour in that directory, and an hour between 0 and 23)
 """
 import matplotlib
 matplotlib.use('Agg')
@@ -71,11 +71,12 @@ data = data[0:dint]
 mask = mask[0:dint]
 times = times[0:tint]
 
-
+new_mask=zeros((len(data),len(data[0])))
 for f in range(0,len(freqs)):
-    new_mask = ff.timeflag(data[:,f],mask[:,f],times,3.,tscale)
-    new_mask = ff.threshold_flag(data[:,f],new_mask[:,f],freqs[f],50.)
-    mask[:,f] = new_mask
+    new_mask[:,f] = ff.timeflag(data[:,f],mask[:,f],times,3.,tscale)
+for t in range(0,len(times)):
+    thres_mask = ff.threshold_flag(data[t],new_mask[t],freqs,50.)
+    mask[t] = thres_mask
 
 numpy.save(outdir+'/'+date+'_mask.npy',mask)
 print shape(mask)

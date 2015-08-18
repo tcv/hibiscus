@@ -3,7 +3,7 @@ Module to do dGSM calibration.
 Assumes that the data has already been put into truncated npy arrays.
 Also assumes that flagging masks have already been calculated, but will run without masks as well.
 
-Takes 3 inputs (directory for real data, earliest time file day and hour in that directory)
+Takes 4 inputs (input directory, output directory, earliest time file day and hour in that directory)
 
 Note that it also has inputs for the supplemental data needed to run the code. 
 """
@@ -67,9 +67,15 @@ Eff_sm_old = itp.UnivariateSpline(F_ant_old,Effic_old,s=0.01)
 fitshort = [9.43299312e-9,-1.16197388e-10,4.31005321e-13]
 
 #Load file for gsm data with 70 MHz antenna.
-gsm_data = numpy.load(supdir+'gsm_data_full_70_Karoo.npy')
-gsm_times = numpy.load(supdir+'gsm_sid_time_full_70_Karoo.npy')
+gsm_data = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_data_full_100_Karoo.npy')
+gsm_times = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_sid_time_full_100_Karoo.npy')
 gsm_freqs = arange(50,111,1)
+f70_gsm = where(gsm_freqs<=85.)[0][-1]
+max_gsm = where(gsm_data[:,f70_gsm]==max(gsm_data[:,f70_gsm]))[0]
+print max_gsm
+print len(gsm_times)
+#gsm_data = numpy.load(supdir+'gsm_data_full_70_Karoo.npy')
+#gsm_times = numpy.load(supdir+'gsm_sid_time_full_70_Karoo.npy')
 directories = os.listdir(indir)
 
 #Load files for full day of data. 
@@ -115,7 +121,6 @@ for hour in range(0,24):
 
 
 print 'Percent of Data Flagged from Frequency Masking: ',100.*sum(mask)/(len(mask)*len(mask[0]))
-
 data = data[0:dint]
 mask = mask[0:mint]
 times = times[0:tint]
@@ -130,6 +135,7 @@ for i in range(0,len(times)):
     single_sid = ff.sidereal(times[i],karoo_idate,karoo_lon,karoo_lat)
     sid_times[i] = single_sid
 
+
 sortind = argsort(sid_times)
 sorttime = zeros(len(sid_times))
 sortdata = zeros((len(sid_times),len(data[0])))
@@ -141,18 +147,18 @@ for i in range(0,len(sid_times)):
 #    sortdata[i] = (data[sortind[i]]-short_data)/Eff_sm(freqs)
 #    sortdata[i] = data[sortind[i]]-short_data
 
+
 #Adding in Time Masking/threshold masking
 for i in range(0,len(freqs)):
     new_mask = ff.timeflag(sortdata[:,i],sortmask[:,i],sorttime,3.,tscale)
     sortmask[:,i] = new_mask
 
-for i in range(0,len(sortdata)):
-    new_mask = ff.threshold_flag(sortdata[i],sortmask[i],freqs,75.)
-    sortmask[i] = new_mask
+#for i in range(0,len(sortdata)):
+#    new_mask = ff.threshold_flag(sortdata[i],sortmask[i],freqs,75.)
+#    sortmask[i] = new_mask
 
 percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
 print 'Percentage of Masked Data from Frequency and Time Masking: ',percent_masked
-
 
 #Compress data to same time intervals as gsm data.
 stack_data,stack_mask = cf.match_binning(gsm_times,freqs,sorttime,sortdata,sortmask)
@@ -160,20 +166,23 @@ stack_data,stack_mask = cf.match_binning(gsm_times,freqs,sorttime,sortdata,sortm
 #Correct for time error in data using time of max signal.
 #70 MHz used as proxy for full dataset. 
 #Re-sort based upon the adjustment. 
-f70_gsm = where(gsm_freqs<=70.)[0][-1]
-f70_data = where(freqs<=70.)[0][-1]
+f70_gsm = where(gsm_freqs<=85.)[0][-1]
+f70_data = where(freqs<=85.)[0][-1]
 
 data_70 = zeros(len(times))
 for i in range(0,len(times)):
     data_70[i] = data[i][f70_data]
 
+print stack_data[:,f70_data]
 max_stack = where(stack_data[:,f70_data]==max(stack_data[:,f70_data]))[0]
-max_gsm = where(gsm_data[:,f70_gsm]==max(gsm_data[:,f70_gsm]))[0]
+print max_stack
+#max_gsm = where(gsm_data[:,f70_gsm]==max(gsm_data[:,f70_gsm]))[0]
 time_diff = gsm_times[max_gsm]-gsm_times[max_stack]
 ind_diff = max_gsm-max_stack
 adj_times = zeros(len(gsm_times))
 for i in range(0,len(gsm_times)):
-    adj_times[i] = (gsm_times[i]-(gsm_times[max_stack]-gsm_times[max_gsm]))%24
+#    print gsm_times[i]
+    adj_times[i] = (gsm_times[i]+time_diff)%24.
 
 sortstack_ind = argsort(adj_times)
 sortstack = zeros((len(adj_times),len(stack_data[0])))
@@ -222,7 +231,7 @@ pylab.xlabel('Sidereal Time (Hours)')
 pylab.ylabel('Temperature (Kelvin)')
 pylab.grid()
 pylab.scatter(lim_time,Kdgsm[f70_data]*lim_ms_stack[:,f70_data],label='cal data',c='g',edgecolor='g',s=3)
-pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_70_MHz.png',dpi=300)
+pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_'+str(int(freqs[f70_data]))+'_MHz.png',dpi=300)
 pylab.clf()
 
 
@@ -241,7 +250,7 @@ pylab.ylabel('Temperature (Kelvin)')
 pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_mean.png',dpi=300)
 pylab.clf()
 
-Kfit,Kparams = cf.poly_fore(mean_data*Kdgsm,mean_mask,freqs,60.,90.,2,ones(len(mean_data)))
+Kfit,Kparams = cf.poly_fore(mean_data*Kdgsm,mean_mask,freqs,80.,110.,2,ones(len(mean_data)))
 print Kparams
 print ma.min(mean_data*Kdgsm-Kfit)
 print ma.max(mean_data*Kdgsm-Kfit)
@@ -281,7 +290,11 @@ pylab.title('Masked GSM Cal Temperature (Kelvin)')
 pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_masked_waterfall.png',dpi=300)
 pylab.clf()
 
-numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
-numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
-numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
+#numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
+#numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
+#numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
+numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_100MHz_ant.npy',cal_data_masked)
+numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_100MHz_ant.npy',gsm_times)
+numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_100MHz_ant.npy',Kdgsm)
+
 

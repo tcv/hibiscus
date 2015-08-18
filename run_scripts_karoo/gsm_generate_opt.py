@@ -48,63 +48,44 @@ def main(gsm_times,antenna,fplot):
         sim_data = numpy.load(supdir+'beam_simulations50-90.npy')
     elif antenna==100:
         sim_data = numpy.load(supdir+'beam_simulations80-110.npy')
-
-    init_sim_var = gf.radec_sim(curr_az,curr_alt,lat,lon,elevation,0.,idate)
-    radiff = gf.calc_ra_shift(lat,lon,elevation,0/60.,3/60.,idate)
-    
-    curr_sim_var = zeros((len(init_sim_var),len(init_sim_var[0])))
    
-    print radiff
-    
     print 'Initial loading time is: ',time.time()-start,' seconds'
 
-    sid_times = zeros(len(gsm_times))
-    results = zeros((len(gsm_times),len(gsm_freq)))
+    results = zeros(len(gsm_freq))
     find = 0
-    tind = 0 
 
-    for t in range(0,len(gsm_times)):   
-        tstart = time.time()
+    tstart = time.time()
 
 #Convert time to sidereal time. 
-        origtime = float(gsm_times[t])/60.
-
-        single_sid = ff.sidereal(origtime,idate,lon,lat)
-        sid_times[t] = single_sid
-
-        min = (single_sid%1.0)*60
-        sec = (min%1.0)*60
-        time_label = str(single_sid).split('.')[0]+'-'+str(min).split('.')[0]+'-'+str(sec).split('.')[0]
+    origtime = float(gsm_times)/60.
+    single_sid = ff.sidereal(origtime,idate,lon,lat)
+    min = (single_sid%1.0)*60
+    sec = (min%1.0)*60
+    time_label = str(single_sid).split('.')[0]+'-'+str(min).split('.')[0]+'-'+str(sec).split('.')[0]
         
 #Create sim ra/dec array for a given time. 
-        for i in range(0,len(curr_sim_var)):
-            curr_sim_var[i,0] = (init_sim_var[i,0]+t*radiff)%(360.)
-            curr_sim_var[i,1] = init_sim_var[i,1]
+    sim_var = gf.radec_sim(curr_az,curr_alt,lat,lon,elevation,origtime,idate)
         
-        for f in range(0,len(gsm_freq)):
-#            fstart = time.time()
-            freq = gsm_freq[f]
+    for f in range(0,len(gsm_freq)):
+        fstart = time.time()
+        freq = gsm_freq[f]
 
 #Calculate expected Temperature for the given freq, time
-            plot_label = outdir+'plots/gsm_sim_plots_'+time_label+'_hrs_'+str(int(freq))+'_MHz.png'
-            fr = gf.ant_beam(gsm_data[f],gsm_var, sim_data[f], curr_sim_var,plot_label,freq,float(fplot))
+        plot_label = outdir+'plots/gsm_sim_plots_'+time_label+'_hrs_'+str(int(freq))+'_MHz.png'
+        fr = gf.ant_beam(gsm_data[f],gsm_var, sim_data[f], sim_var,plot_label,freq,float(fplot))
 #            print 'Temperature value is: ', fr
 #            print 'Frequency is: ', freq
-            results[tind,find] = fr
-            find = find+1
+        results[find] = fr
+        find = find+1
 #            print 'Running ',freq,' MHz took ',time.time()-fstart,' seconds.'
-        tind+=1
-        find=0
-        print 'Running a single time sample takes: ',time.time()-tstart,' seconds'
 
 #Make a .npy array for the data
     if antenna==70:
-        numpy.save(outdir+'gsm_data_full_70_Karoo.npy',results)
-        numpy.save(outdir+'gsm_sid_time_full_70_Karoo.npy',sid_times)
+        numpy.save(outdir+'gsm_data_Karoo_'+time_label+'_sid_time.npy',results)
     elif antenna==100: 
-        numpy.save(outdir+'gsm_data_full_100_Karoo.npy',results)
-        numpy.save(outdir+'gsm_sid_time_full_100_Karoo.npy',sid_times)
-
+        numpy.save(outdir+'gsm_data_Karoo_'+time_label+'_sid_time.npy',results)
+    find=0
+#    print 'Running a single time sample takes: ',time.time()-tstart,' seconds'
 
     return
 

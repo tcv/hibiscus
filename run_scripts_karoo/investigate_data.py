@@ -23,14 +23,16 @@ import errno
 import numpy.polynomial.polynomial as poly
 
 
+
 indir = sys.argv[1]
 outdir = sys.argv[2]
+direct = sys.argv[3]
 
-data = numpy.load(indir+'gsm_cal_data_Apr_03_70MHz_ant.npy')
-times = numpy.load(indir+'gsm_cal_times_Apr_03_70MHz_ant.npy')
+data = numpy.load(indir+'gsm_cal_data_Apr_'+direct+'MHz_ant.npy')
+times = numpy.load(indir+'gsm_cal_times_Apr_'+direct+'MHz_ant.npy')
 freqs = arange(40.,130.,90./len(data[0]))
 f110 = where(freqs<=110.)[0][-1]
-
+f90 = where(freqs<=90.)[0][-1]
 mask = zeros((len(data),len(data[0])))
 test = where(data==0.0)
 
@@ -44,8 +46,8 @@ for int in range(0,2):
     mask1[where(mask==1.)]=1.
 
     bad_ind = zeros(len(freqs))
-    for i in range(200,f110):
-        if sum(mask[:,i])>0.35*len(mask[:,i]):
+    for i in range(f90,f110):
+        if sum(mask[:,i])>0.5*len(mask[:,i]):
              bad_ind[i] = 1.0
 #            for f in range(-2,2):
 #                bad_ind[i+f]=1.0
@@ -53,7 +55,7 @@ for int in range(0,2):
         if bad_ind[i] == 1.:
             mask[:,i] = 1.0
     for i in range(0,len(times)):
-        if sum(mask[i])>0.2*len(mask[i]):
+        if sum(mask[i])>0.5*len(mask[i]):
             mask[i] = 1.0
 
 
@@ -77,18 +79,21 @@ for int in range(0,5):
     mean_mask = zeros(len(mean_data))
     bad_mean = where(mean_data==1.)
     mean_mask[bad_mean] = 1.
-    spike_mask = ff.spike_flag(mean_data,mean_mask,freqs,0.5)
+    spike_mask = ff.spike_flag(mean_data,mean_mask,freqs,1.)
+    mean_mask = spike_mask
     for f in range(0,len(freqs)):
         if spike_mask[f]==1.:
             mask[:,f] = 1.
+    finit = where(freqs<=80.)[0][-1]
+    ffinal = where(freqs<=110.)[0][-1]
     f88 = where(freqs<=88.)[0][-1]
-    spike_mask_lim = ff.spike_flag(mean_data[0:f88],mean_mask[0:f88],freqs[0:f88],0.2)
-    for f in range(0,f88):
+    spike_mask_lim = ff.spike_flag(mean_data[finit:ffinal],mean_mask[finit:ffinal],freqs[finit:ffinal],1.)
+    for f in range(0,ffinal-finit):
         if spike_mask_lim[f]==1.:
-            mask[:,f]=1.
+            mask[:,f+finit]=1.
 
-    tmean_comp = ma.compressed(ma.array(mean_data,mask=spike_mask))
-    freq_comp = ma.compressed(ma.array(freqs,mask=spike_mask))
+    tmean_comp = ma.compressed(ma.array(mean_data,mask=mean_mask))
+    freq_comp = ma.compressed(ma.array(freqs,mask=mean_mask))
 
     print 'Percent of Data Masked after part 1 of iteration ',iterate,' is: ',100*sum(mask)/(len(mask)*len(mask[0]))
 
@@ -119,21 +124,29 @@ for int in range(0,5):
 
     print 'Percent of Data Masked after part 2 of iteration ',iterate,' is: ',100*sum(mask)/(len(mask)*len(mask[0]))
 
-
+    pylab.rc('font',size=6)
     pylab.subplot(221)
-    pylab.imshow(data,vmin=0,vmax=1.e4,aspect=90./24.,extent=(freqs[0],freqs[-1],24.,0))
+    pylab.imshow(data,vmin=0,vmax=6.e3,aspect=90./24.,extent=(freqs[0],freqs[-1],24.,0))
     pylab.colorbar()
+    pylab.xlabel('Sidereal Time (Hours)')
+    pylab.ylabel('Frequency (MHz)')
+    pylab.title('Calibrated Data')
     pylab.subplot(222)
-    pylab.imshow(mask-mask1,vmin=-1,vmax=1.,aspect=90./24.,extent=(freqs[0],freqs[-1],24.,0))
-#    pylab.subplot(323)
-#    pylab.imshow(mask3-mask2,vmin=-1,vmax=1,aspect=90./24.,extent=(freqs[0],freqs[-1],24.,0))
-#    pylab.subplot(324)
-#    pylab.imshow(mask-mask3,vmin=-1,vmax=1,aspect=90./24.,extent=(freqs[0],freqs[-1],24.,0))
+    pylab.imshow(mask-mask1,vmin=-.1,vmax=1.1,aspect=90./24.,extent=(freqs[0],freqs[-1],24.,0))
+    pylab.title('Current Mask-Initial Mask')
+    pylab.xlabel('Sidereal Time (Hours)')
+    pylab.ylabel('Frequency (MHz)') 
     pylab.subplot(223)
-    pylab.scatter(time_comp,fmean_comp,s=1)
+    pylab.scatter(time_comp,fmean_comp/1000.,s=1)
+    pylab.ylim(0,3)
+    pylab.xlim(0,24)
+    pylab.ylabel('Temperature (1000 K)')
+    pylab.xlabel('Sidereal Time (Hours)')
     pylab.subplot(224)
-    pylab.scatter(freq_comp,tmean_comp,s=1)
-    
+    pylab.scatter(freq_comp,tmean_comp/1000.,s=1)
+    pylab.xlim(40,130)
+    pylab.ylim(0,6.)
+    pylab.xlabel('Frequency (MHz)')    
     pylab.savefig(outdir+'masking_test_iteration_'+str(iterate)+'.png',dpi=300)
     pylab.clf()
 
@@ -176,13 +189,17 @@ for int in range(0,25):
     
 print 'Percent of Data Masked after part 3 is: ',100*sum(mask)/(len(mask)*len(mask[0]))
 
-
-pylab.scatter(freq_comp,tmean_comp,s=1)
-pylab.grid()
-pylab.xlim(50,110)
-pylab.xlabel('Frequency (MHz)')
-pylab.ylim(0,6e3)
-pylab.ylabel('Temperature (Kelvin)')
+pylab.rc('font',size=8)
+f,axarr = plt.subplots(1,2)
+axarr[0].scatter(freq_comp,tmean_comp,s=1)
+axarr[0].grid()
+axarr[0].set_xlim(50,110)
+axarr[0].set_xlabel('Frequency (MHz)')
+axarr[0].set_ylim(0,4e3)
+axarr[0].set_ylabel('Temperature (Kelvin)')
+axarr[0].set_title('Mean Data')
+axarr[1].imshow(mask,vmin=0,vmax=1.,aspect=90./24.,extent=(freqs[0],freqs[-1],24.,0))
+axarr[1].set_title('Full Mask')
 pylab.savefig(outdir+'masking_test_final.png',dpi=300)
 pylab.clf()
 
@@ -190,4 +207,4 @@ new_data = data
 masked = where(mask==1.)
 new_data[masked]=0.0
 
-numpy.save(indir+'gsm_cal_data_masked_Apr_03_70MHz_ant_shortsub.npy',new_data)
+numpy.save(indir+'gsm_cal_data_masked_Apr_'+direct+'MHz_ant.npy',new_data)

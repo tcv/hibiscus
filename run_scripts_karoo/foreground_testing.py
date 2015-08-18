@@ -25,6 +25,7 @@ import numpy.polynomial.polynomial as poly
 
 indir = sys.argv[1]
 outdir = sys.argv[2]
+direct = sys.argv[3]
 supdir= '../../supplemental_data/'
 
 lat = '-30.727206'
@@ -44,9 +45,9 @@ print site.sidereal_time()
 site.date = site.next_setting(sun)
 print site.sidereal_time()
 
-data = numpy.load(indir+'gsm_cal_data_masked_Apr_03_70MHz_ant.npy')
-times = numpy.load(indir+'gsm_cal_times_Apr_03_70MHz_ant.npy')
-Kdgsm = numpy.load(indir+'gsm_cal_values_Apr_03_70MHz_ant.npy')
+data = numpy.load(indir+'gsm_cal_data_masked_Apr_'+direct+'MHz_ant.npy')
+times = numpy.load(indir+'gsm_cal_times_Apr_'+direct+'MHz_ant.npy')
+Kdgsm = numpy.load(indir+'gsm_cal_values_Apr_'+direct+'MHz_ant.npy')
 freqs = arange(40.,130.,90./len(data[0]))
 
 mask = zeros((len(data),len(data[0])))
@@ -76,10 +77,14 @@ new_data = data - short_sm
 srdata = rebin_data-smooth_short(short_f)
 f50 = where(freqs<=50.)[0][-1]
 f90 = where(freqs<=90.)[0][-1]
+f80 = where(freqs<=80.)[0][-1]
+f110 = where(freqs<=110.)[0][-1]
 rf50 = where(short_f<=50.)[0][-1]
 rf90 = where(short_f<=90.)[0][-1]
-ns = [2,3] 
-ms = [1,2,3,4] 
+rf80 = where(short_f<=80.)[0][-1]
+rf110 = where(short_f<=110.)[0][-1]
+ns = [2,3,4] 
+ms = [1,2,3] 
 fscale = 16
 
 mean_sig,mean_smask = cf.time_mean(data,mask)
@@ -127,29 +132,29 @@ for r in ns:
 
     for t in range(0,len(times)):
         if len(mask[t])!=sum(mask[t]):
-            Kfit[t], Kparams[t] = cf.poly_fore(data[t],mask[t],freqs,50.,90.,r-1,ones(len(data[t])))
-            sKfit[t], sKparams[t] = cf.poly_fore(new_data[t],mask[t],freqs,50.,90.,r-1,ones(len(data[t])))
+            Kfit[t], Kparams[t] = cf.poly_fore(data[t],mask[t],freqs,80.,110.,r-1,ones(len(data[t])))
+            sKfit[t], sKparams[t] = cf.poly_fore(new_data[t],mask[t],freqs,80.,110.,r-1,ones(len(data[t])))
             for m in ms:
-                Rfit[t,:,r-ns[0],m-ms[0]], Rp = cf.rat_fore(data[t],mask[t],freqs,50.,90.,r-1,m)
+                Rfit[t,:,r-ns[0],m-ms[0]], Rp = cf.rat_fore(data[t],mask[t],freqs,80.,110.,r-1,m)
 #                print shape(Rp)
                 Rparams[t,m-ms[0],0:(len(Rp))] = Rp
-                sRfit[t,:,r-ns[0],m-ms[0]], sRp = cf.rat_fore(new_data[t],mask[t],freqs,50.,90.,r-1,m)
+                sRfit[t,:,r-ns[0],m-ms[0]], sRp = cf.rat_fore(new_data[t],mask[t],freqs,80.,110.,r-1,m)
 #                print shape(sRp)
                 sRparams[t,m-ms[0],0:(len(sRp))] = sRp
         rdata[t],rmask[t],nf = ff.rebin(data[t]-Kfit[t],mask[t],freqs,fscale)
-        nandata = where(isnan(rdata))
-        rdata[nandata]=0.
+#        nandata = where(isnan(rdata))
+#        rdata[nandata]=0.
         srdata[t],srmask[t],nf = ff.rebin(new_data[t]-sKfit[t],mask[t],freqs,fscale)
-        nandata = where(isnan(srdata))
-        srdata[nandata] = 0.
+#        nandata = where(isnan(srdata))
+#        srdata[nandata] = 0.
         for m in ms:
             rrdata[t,:,m-ms[0]],rrmask[t,:,m-ms[0]],nf = ff.rebin(data[t]-Rfit[t,:,r-ns[0],m-ms[0]],mask[t],freqs,fscale) 
             rsrdata[t,:,m-ms[0]],rsrmask[t,:,m-ms[0]],nf = ff.rebin(new_data[t]-sRfit[t,:,r-ns[0],m-ms[0]],mask[t],freqs,fscale)
     
-    nandata = where(isnan(rrdata))
-    rrdata[nandata] = 0.0
-    nandata = where(isnan(rsrdata))
-    rsrdata[nandata] = 0.0
+#    nandata = where(isnan(rrdata))
+#    rrdata[nandata] = 0.0
+#    nandata = where(isnan(rsrdata))
+#    rsrdata[nandata] = 0.0
 
     mean_Kf[:,r-ns[0]],mean_Kmask[:,r-ns[0]] = cf.time_mean(Kfit,mask)
     smean_Kf[:,r-ns[0]],smean_Kmask[:,r-ns[0]] = cf.time_mean(sKfit,mask)
@@ -158,92 +163,105 @@ for r in ns:
 
     for i in range(0,len(ms)):
         mean_Rf[:,r-ns[0],i],mean_Rmask[:,r-ns[0],i] = cf.time_mean(Rfit[:,:,r-ns[0],i],mask)
-        mean_Rresid[r-ns[0],i,:],mean_Rrmask[r-ns[0],i,:] = cf.time_mean(rrdata[:,:,i],rrmask) 
+        mean_Rresid[r-ns[0],i,:],mean_Rrmask[r-ns[0],i,:] = cf.time_mean(rrdata[:,:,i],rrmask[:,:,i]) 
         smean_Rf[:,r-ns[0],i],smean_Rmask[:,r-ns[0],i] = cf.time_mean(sRfit[:,:,r-ns[0],i],mask)
-        mean_sRresid[r-ns[0],i,:],mean_sRrmask[r-ns[0],i,:] = cf.time_mean(rsrdata[:,:,i],rsrmask)
+        mean_sRresid[r-ns[0],i,:],mean_sRrmask[r-ns[0],i,:] = cf.time_mean(rsrdata[:,:,i],rsrmask[:,:,i])
 
-pylab.rc('font',size=8)
-index = 1
+index=1
+pylab.rc('font',size=6)
+f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
+f.suptitle('Time Mean Data and Polynomial Fits, n=num order, m=denom order',size=10)
 for n in range(0,len(ns)):
     for m in range(0,len(ms)):
-        pylab.subplot(len(ns),len(ms),index)
-        pylab.scatter(ma.compressed(ma.array(freqs,mask=mean_smask)),ma.compressed(ma.array(mean_sig,mask=mean_smask)),s=1,c='b',edgecolor='b')
-        pylab.plot(freqs,mean_Kf[:,n],c='c')
-        pylab.plot(freqs,mean_Rf[:,n,m],c='g')
+        axarr[n,m].scatter(ma.compressed(ma.array(freqs,mask=mean_smask)),ma.compressed(ma.array(mean_sig,mask=mean_smask))/1000.,s=1,c='b',edgecolor='b',label='data')
+        axarr[n,m].scatter(ma.compressed(ma.array(freqs,mask=mean_smask)),ma.compressed(ma.array(mean_Kf[:,n]/1000.,mask=mean_smask)),c='c',edgecolor='c',s=1,label='P')
+        axarr[n,m].scatter(ma.compressed(ma.array(freqs,mask=mean_smask)),ma.compressed(ma.array(mean_Rf[:,n,m]/1000.,mask=mean_smask)),c='g',edgecolor='g',s=1,label='R')
 
-        pylab.scatter(ma.compressed(ma.array(freqs,mask=smean_smask)),ma.compressed(ma.array(smean_sig,mask=smean_smask)),s=1,c='r',edgecolor='r') 
-        pylab.plot(freqs,smean_Kf[:,n],c='k')
-        pylab.plot(freqs,smean_Rf[:,n,m],c='m') 
+        axarr[n,m].scatter(ma.compressed(ma.array(freqs,mask=smean_smask)),ma.compressed(ma.array(smean_sig,mask=smean_smask))/1000.,s=1,c='r',edgecolor='r',label='sh data') 
+        axarr[n,m].scatter(ma.compressed(ma.array(freqs,mask=smean_smask)),ma.compressed(ma.array(smean_Kf[:,n]/1000.,mask=smean_smask)),c='k', edgecolor='k',s=1,label='sh P')
+        axarr[n,m].scatter(ma.compressed(ma.array(freqs,mask=smean_smask)),ma.compressed(ma.array(smean_Rf[:,n,m]/1000.,mask=smean_smask)),c='m',edgecolor='m',s=1,label='sh R') 
 #        pylab.scatter(ma.compressed(ma.array(freqs,mask=mean_mask)),ma.compressed(ma.array(short_sm,mask=mean_mask)),s=1,c='y',edgecolor='y')
-        pylab.xlim(60,90)
-        pylab.ylim(1e3,4e3)
-        pylab.grid()
+        axarr[n,m].grid()
+        axarr[n,m].legend(prop={'size':6})
+        axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m]))
         if (index)%len(ms)==1:
-            pylab.ylabel('Temperature (Kelvin)')
+            axarr[n,m].set_ylabel('Temp (1000 Kelvin)')
+            axarr[n,m].set_ylim(0,4)
         if (index)>((len(ns)-1)*len(ms)):
-            pylab.xlabel('Frequency (MHz)')
+            axarr[n,m].set_xlabel('Frequency (MHz)')
+            axarr[n,m].set_xlim(70,120)
         index+=1
+f.subplots_adjust(wspace=0)
 pylab.savefig(outdir+'total_fit_data.png',dpi=300)
 pylab.clf()
 
 index=1
-pylab.rc('font',size=8)
+pylab.rc('font',size=6)
+f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
+f.suptitle('Time Mean Residuals, n=num order,m=denom order',size=10)
 for n in range(0,len(ns)):
     for m in range(0,len(ms)):
-        pylab.subplot(len(ns),len(ms),index)
-        pylab.scatter(ma.compressed(ma.array(nf,mask=mean_Krmask[n,:])),ma.compressed(ma.array(mean_Kresid[n,:],mask=mean_Krmask[n,:])),s=1,c='b',edgecolor='b')
-        pylab.scatter(ma.compressed(ma.array(nf,mask=mean_sKrmask[n,:])),ma.compressed(ma.array(mean_sKresid[n,:],mask=mean_sKrmask[n,:])),s=1,c='c',edgecolor='c')
-        pylab.scatter(ma.compressed(ma.array(nf,mask=mean_Rrmask[n,m])),ma.compressed(ma.array(mean_Rresid[n,m],mask=mean_Rrmask[n,m])),s=1,c='r',edgecolor='r')
-        pylab.scatter(ma.compressed(ma.array(nf,mask=mean_sRrmask[n,m])),ma.compressed(ma.array(mean_sRresid[n,m],mask=mean_sRrmask[n,m])),s=1,c='m',edgecolor='m')
-        mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
-        std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
-        pylab.xlim(50,90)
-        pylab.ylim(mean_val-std_val,mean_val+std_val)
-        pylab.grid()
-
+        axarr[n,m].scatter(ma.compressed(ma.array(nf,mask=mean_Krmask[n,:])),ma.compressed(ma.array(mean_Kresid[n,:],mask=mean_Krmask[n,:])),s=1,c='b',edgecolor='b',label='P')
+        axarr[n,m].scatter(ma.compressed(ma.array(nf,mask=mean_sKrmask[n,:])),ma.compressed(ma.array(mean_sKresid[n,:],mask=mean_sKrmask[n,:])),s=1,c='c',edgecolor='c',label='sh P')
+        axarr[n,m].scatter(ma.compressed(ma.array(nf,mask=mean_Rrmask[n,m])),ma.compressed(ma.array(mean_Rresid[n,m],mask=mean_Rrmask[n,m])),s=1,c='r',edgecolor='r',label='R')
+        axarr[n,m].scatter(ma.compressed(ma.array(nf,mask=mean_sRrmask[n,m])),ma.compressed(ma.array(mean_sRresid[n,m],mask=mean_sRrmask[n,m])),s=1,c='m',edgecolor='m',label='sh R')
+        mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+        std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+        axarr[n,m].grid() 
+        axarr[n,m].legend(prop={'size':6})
+        axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m]))
         if (index)%len(ms)==1:
-            pylab.ylabel('Resid Temp (Kelvin)')
+            axarr[n,m].set_ylabel('Resid Temp (Kelvin)')
+            axarr[n,m].set_ylim(mean_val-std_val,mean_val+std_val)
         if (index)>(len(ns)-1)*len(ms):
-            pylab.xlabel('Frequency (MHz)')
+            axarr[n,m].set_xlabel('Frequency (MHz)')
+            axarr[n,m].set_xlim(70,120)
         index+=1
+f.subplots_adjust(wspace=0)
 pylab.savefig(outdir+'total_resid_data.png',dpi=300)
 pylab.clf()
 
 index=1
-pylab.rc('font',size=8)
+pylab.rc('font',size=7)
+f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
+f.suptitle('Rational Function Residuals, n=num order,m=denom order',size=10)
 for n in range(0,len(ns)):
     for m in range(0,len(ms)):
-        pylab.subplot(len(ns),len(ms),index)
-        mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
-        std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
-        pylab.imshow(data[:,f50:f90]-Rfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=40./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
-        cb = pylab.colorbar()
-        if (index)%len(ms)==(len(ms)):
+        mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+        std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+        im = axarr[n,m].imshow(data[:,f80:f110]-Rfit[:,f80:f110,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f80],freqs[f110],times[-1],times[0]))
+        axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m])) 
+        if (index)%len(ms)==0:
+            cb = plt.colorbar(im,ax=axarr[n,m])
             cb.set_label('Temp Resid (K)')
         if (index)%len(ms)==1:
-            pylab.ylabel('Sidereal Time (Hrs)')
+            axarr[n,m].set_ylabel('Sidereal Time (Hrs)')
         if (index)>((len(ns)-1)*len(ms)):
-            pylab.xlabel('Frequency (MHz)')
+            axarr[n,m].set_xlabel('Frequency (MHz)')
         index+=1
+f.subplots_adjust(wspace=0)
 pylab.savefig(outdir+'R_resid_distribution_data.png',dpi=300) 
 pylab.clf()
 
 index=1
-pylab.rc('font',size=8)
+pylab.rc('font',size=7)
+f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
+f.suptitle('Short Sub Rational Function Residuals, n=num order, m=denom order',size=10)
 for n in range(0,len(ns)):
     for m in range(0,len(ms)):
-        pylab.subplot(len(ns),len(ms),index)
-        mean_val = ma.mean(ma.compressed(ma.array(mean_sKresid[n,rf50:rf90],mask=mean_sKrmask[n,rf50:rf90])))
-        std_val = ma.std(ma.compressed(ma.array(mean_sKresid[n,rf50:rf90],mask=mean_sKrmask[n,rf50:rf90])))
-        pylab.imshow(new_data[:,f50:f90]-sRfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=40./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
-        cb = pylab.colorbar()
-        if (index)%len(ns)==(len(ns)): 
+        mean_val = ma.mean(ma.compressed(ma.array(mean_sKresid[n,rf80:rf110],mask=mean_sKrmask[n,rf80:rf110])))
+        std_val = ma.std(ma.compressed(ma.array(mean_sKresid[n,rf80:rf110],mask=mean_sKrmask[n,rf80:rf110])))
+        im = axarr[n,m].imshow(new_data[:,f80:f110]-sRfit[:,f80:f110,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f80],freqs[f110],times[-1],times[0]))
+        axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m])) 
+        if (index)%len(ms)==0: 
+            cb = plt.colorbar(im,ax=axarr[n,m])
             cb.set_label('Temp Resid (K)')
-        if (index)%len(ns)==1: 
-            pylab.ylabel('Sidereal Time (Hrs)')
+        if (index)%len(ms)==1: 
+            axarr[n,m].set_ylabel('Sidereal Time (Hrs)')
         if (index)>((len(ns)-1)*len(ms)):
-            pylab.xlabel('Frequency (MHz)')
+            axarr[n,m].set_xlabel('Frequency (MHz)')
         index+=1
+f.subplots_adjust(wspace=0) 
 pylab.savefig(outdir+'short_R_resid_distribution_data.png',dpi=300)
 pylab.clf()
 

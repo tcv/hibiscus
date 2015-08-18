@@ -34,15 +34,17 @@ karoo_idate = '2015/4/1'
 karoo_lat = '-30.7216'
 karoo_lon = '21.4109'
 
-indir = '../../Karoo_data_npy/'
-plotdir = '../../Karoo_data_npy_plts/'
+#indir = '../../Karoo_data_npy/'
+#plotdir = '../../Karoo_data_npy_plts/'
+indir = sys.argv[1]
+plotdir = sys.argv[2]
 #plotdir=indir
 directories = os.listdir(indir)
 total_average = []
 total_dates = []
 
 for direct in directories:
-    if direct.split('.')[-1]!='png':
+    if direct.split('_')[-1]=='100':
         dirlist = os.listdir(indir+direct+'/')
         sub_dir = indir+direct+'/'
         plot_sub = plotdir+direct+'/'
