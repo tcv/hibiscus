@@ -31,6 +31,8 @@ print myarg
 #Other relevant information needed to run code
 antenna = '100'
 fplot = '150'
+site_params = ['2015/4/1','21.4109','-30.7216',1080]
+#Site params are initial date, longitude, latitude,elevation
 
 #Actual run
 start = time.time()

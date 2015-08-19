@@ -1,3 +1,7 @@
+"""
+Set of scripts for doing things related to the gsm data generation process.
+"""
+
 from numpy import *
 import pylab
 import numpy
@@ -20,7 +24,6 @@ def get_gsm_radec(filename):
     file = loadtxt(filename)
     ra_array = file[:,1]
     dec_array = 90.*ones(len(file))-file[:,0]
-#    dec_array = file[:,0]
     file = []
 
     ra_array = array(ra_array)
@@ -31,7 +34,8 @@ def get_gsm_radec(filename):
 def antenna_beam_pattern(filename,input_freqs):
     """
     Converts the beam_simulations50-90.dat file into a gain array,
-    with corresponding theta,phi and freq arrays.
+    with corresponding theta and phi arrays.
+    Done for a given frequency
     """
     
     theta_array = zeros(181*181)
@@ -41,7 +45,6 @@ def antenna_beam_pattern(filename,input_freqs):
     larger = 0
     freq1 = 0
     freq2 = 0
-
  
     f = open(filename)
 
@@ -253,20 +256,16 @@ def gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate):
     gsm_array = zeros(len(ras))
     len_a  = 0
     for i in range(0,len(ras)):
-#    i = 1000
-#    while 1:
         sin_alt, sin_az = azel_loc(ras[i],decs[i],lat,lon,elevation,time,idate)
         if sin_alt>=0:
             alts[len_a] = sin_alt
             azs[len_a] = sin_az
-    #        freqs_gsm.append(freq_gsm)
             gsm_array[len_a] = gsmdata[i]
             len_a = len_a+1
 
         
     alts = array(alts[0:len_a-1])
     azs = array(azs[0:len_a-1])
-    #freqs_gsm = array(freqs_gsm)
     gsm_array = array(gsm_array[0:len_a-1])
 
     gsm_var = vstack((alts,azs)).T
@@ -303,8 +302,13 @@ def sim_beam_interp(gsm_var,gaindb,sim_var):
     """
     Generates the interpolated sim beam for the GSM ra/decs
     """
+# Alternate interpolator, but takes longer to run
 #    func_gain = itp.CloughTocher2DInterpolator(sim_var*180./pi,gaindb)
+
+#Simplest linear interpolator. 
     func_gain = itp.LinearNDInterpolator(sim_var*180./pi,gaindb)
+
+
     gsm_gain = func_gain(gsm_var)
     gain_beam = pow(10.,0.05*gsm_gain)
     nandata = where(isnan(gain_beam))
@@ -346,7 +350,8 @@ def ant_beam(gsm_array, gsm_var,gaindb,sim_var,label,freq,plotf):
 
     summed_beam = ma.sum(ma.sum(full_beam,axis=0),axis=0)
     summed_sim = ma.sum(ma.sum(gain_beam,axis=0),axis=0)
-    
+
+#Allows you to make plots to check results at a single frequency only if you set plotf to be within the frequency range of the data.     
     if freq==plotf:
         plt.rc('font',size=8)
         plt.subplot(411)
@@ -469,12 +474,4 @@ def findg(freq,phi,theta,gaindb,f,p,t):
 
     return ans5
 
-beamfile = '../beam_simulations50-90.dat'
-radecfile = '../angles.dat'
-gsmdir = '../galaxy_maps_radec/'
-lat = '-30.727206'
-lon = '21.479055'
-elevation = 1080
-time = 3.5*24.
-idate = '2015/04/01'
-freqs = 60
+
