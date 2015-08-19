@@ -1,5 +1,5 @@
 """
-Module for testing out new code to improve flagging and foreground subtraction.
+Module for testing out new code to improve flagging.
 """
 import matplotlib
 matplotlib.use('Agg')
@@ -21,8 +21,6 @@ import eff_funcs as ef
 import ephem as eph
 import errno
 import numpy.polynomial.polynomial as poly
-
-
 
 indir = sys.argv[1]
 outdir = sys.argv[2]
@@ -84,9 +82,14 @@ for int in range(0,5):
     for f in range(0,len(freqs)):
         if spike_mask[f]==1.:
             mask[:,f] = 1.
-    finit = where(freqs<=80.)[0][-1]
-    ffinal = where(freqs<=110.)[0][-1]
+    if sys.argv[3].split('_')[-1]=='100':
+        finit = where(freqs<=80.)[0][-1]
+        ffinal = where(freqs<=110.)[0][-1]
+    elif sys.argv[3].split('_')[-1]=='70':
+        finit = where(freqs<=50.)[0][-1]
+        ffinal = where(freqs<=90.)[0][-1]
     f88 = where(freqs<=88.)[0][-1]
+
     spike_mask_lim = ff.spike_flag(mean_data[finit:ffinal],mean_mask[finit:ffinal],freqs[finit:ffinal],1.)
     for f in range(0,ffinal-finit):
         if spike_mask_lim[f]==1.:

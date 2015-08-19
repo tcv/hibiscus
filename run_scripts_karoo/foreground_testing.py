@@ -1,5 +1,5 @@
 """
-Module for testing out new code to improve flagging and foreground subtraction.
+Module for testing out new code to improve foreground subtraction.
 """
 import matplotlib
 matplotlib.use('Agg')
@@ -26,6 +26,7 @@ import numpy.polynomial.polynomial as poly
 indir = sys.argv[1]
 outdir = sys.argv[2]
 direct = sys.argv[3]
+ant = sys.argv[3].split('_')[-1]
 supdir= '../../supplemental_data/'
 
 lat = '-30.727206'
@@ -63,18 +64,25 @@ rebin_data = zeros((len(data),len(data[0])/fscale))
 rebin_mask = zeros((len(data),len(data[0])/fscale))
 for t in range(0,len(times)):
     rebin_data[t],rebin_mask[t],rebin_f = ff.rebin(data[t],mask[t],freqs,fscale)
-st,sf,short_data,sm,sf,sv,ste = ff.loadsingle(supdir+'2015-04-05-00-06-26_Ch_2_noisetrunc.dat')
+st,sf,short_data,sm,sfreq,sv,ste = ff.loadsingle(supdir+'2015-04-05-00-06-26_Ch_2_noisetrunc.dat')
 
 #Best fit parameters to short data collected in the Karoo.
-fitshort = [9.43299312e-9,-1.16197388e-10,4.31005321e-13]
-short_fit = poly.polyval(freqs,fitshort)
+#fitshort = [9.43299312e-9,-1.16197388e-10,4.31005321e-13]
+#short_fit = poly.polyval(freqs,fitshort)
+
+fitshort = [4.47140321e-11,3.09422597,4.15995054,9.43146423e-09,-1.16198506e-10,4.31190367e-13]
+def func(x,a,b,c,d,e,f):
+    return a*cos(2*pi*x/b+c)+d+e*x+f*x**2
+fitshort,cov=opt.curve_fit(func,freqs,short_data,fitshort[:])
+short_fit = func(freqs,fitshort[0],fitshort[1],fitshort[2],fitshort[3],fitshort[4],fitshort[5])
 
 smask = zeros(len(freqs))
 rebin_short,short_mask,short_f = ff.rebin((short_data)*Kdgsm,smask,freqs,fscale)
-smooth_short = itp.UnivariateSpline(freqs,short_data*Kdgsm)
-short_sm = smooth_short(freqs)
-new_data = data - short_sm 
-srdata = rebin_data-smooth_short(short_f)
+#smooth_short = itp.UnivariateSpline(freqs,short_data*Kdgsm)
+#short_sm = smooth_short(freqs)
+#new_data = data - short_sm 
+new_data = data - short_fit*Kdgsm
+srdata = rebin_data-func(short_f,fitshort[0],fitshort[1],fitshort[2],fitshort[3],fitshort[4],fitshort[5])
 f50 = where(freqs<=50.)[0][-1]
 f90 = where(freqs<=90.)[0][-1]
 f80 = where(freqs<=80.)[0][-1]
@@ -132,13 +140,20 @@ for r in ns:
 
     for t in range(0,len(times)):
         if len(mask[t])!=sum(mask[t]):
-            Kfit[t], Kparams[t] = cf.poly_fore(data[t],mask[t],freqs,80.,110.,r-1,ones(len(data[t])))
-            sKfit[t], sKparams[t] = cf.poly_fore(new_data[t],mask[t],freqs,80.,110.,r-1,ones(len(data[t])))
+            if ant=='70':
+                fit_min = 50.
+                fit_max = 90.
+            elif ant=='100':
+                fit_min = 80.
+                fit_max = 110.
+
+            Kfit[t], Kparams[t] = cf.poly_fore(data[t],mask[t],freqs,fit_min,fit_max,r-1,ones(len(data[t])))
+            sKfit[t], sKparams[t] = cf.poly_fore(new_data[t],mask[t],freqs,fit_min,fit_max,r-1,ones(len(data[t])))
             for m in ms:
-                Rfit[t,:,r-ns[0],m-ms[0]], Rp = cf.rat_fore(data[t],mask[t],freqs,80.,110.,r-1,m)
+                Rfit[t,:,r-ns[0],m-ms[0]], Rp = cf.rat_fore(data[t],mask[t],freqs,fit_min,fit_max,r-1,m)
 #                print shape(Rp)
                 Rparams[t,m-ms[0],0:(len(Rp))] = Rp
-                sRfit[t,:,r-ns[0],m-ms[0]], sRp = cf.rat_fore(new_data[t],mask[t],freqs,80.,110.,r-1,m)
+                sRfit[t,:,r-ns[0],m-ms[0]], sRp = cf.rat_fore(new_data[t],mask[t],freqs,fit_min,fit_max,r-1,m)
 #                print shape(sRp)
                 sRparams[t,m-ms[0],0:(len(sRp))] = sRp
         rdata[t],rmask[t],nf = ff.rebin(data[t]-Kfit[t],mask[t],freqs,fscale)
@@ -186,10 +201,13 @@ for n in range(0,len(ns)):
         axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m]))
         if (index)%len(ms)==1:
             axarr[n,m].set_ylabel('Temp (1000 Kelvin)')
-            axarr[n,m].set_ylim(0,4)
+            axarr[n,m].set_ylim(0,6)
         if (index)>((len(ns)-1)*len(ms)):
             axarr[n,m].set_xlabel('Frequency (MHz)')
-            axarr[n,m].set_xlim(70,120)
+            if ant=='100':
+                axarr[n,m].set_xlim(70,120)
+            elif ant=='70':
+                axarr[n,m].set_xlim(40,100)
         index+=1
 f.subplots_adjust(wspace=0)
 pylab.savefig(outdir+'total_fit_data.png',dpi=300)
@@ -205,8 +223,13 @@ for n in range(0,len(ns)):
         axarr[n,m].scatter(ma.compressed(ma.array(nf,mask=mean_sKrmask[n,:])),ma.compressed(ma.array(mean_sKresid[n,:],mask=mean_sKrmask[n,:])),s=1,c='c',edgecolor='c',label='sh P')
         axarr[n,m].scatter(ma.compressed(ma.array(nf,mask=mean_Rrmask[n,m])),ma.compressed(ma.array(mean_Rresid[n,m],mask=mean_Rrmask[n,m])),s=1,c='r',edgecolor='r',label='R')
         axarr[n,m].scatter(ma.compressed(ma.array(nf,mask=mean_sRrmask[n,m])),ma.compressed(ma.array(mean_sRresid[n,m],mask=mean_sRrmask[n,m])),s=1,c='m',edgecolor='m',label='sh R')
-        mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
-        std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+        if ant=='100':
+            mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+            std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+        elif ant=='70':
+            mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
+            std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
+
         axarr[n,m].grid() 
         axarr[n,m].legend(prop={'size':6})
         axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m]))
@@ -215,7 +238,10 @@ for n in range(0,len(ns)):
             axarr[n,m].set_ylim(mean_val-std_val,mean_val+std_val)
         if (index)>(len(ns)-1)*len(ms):
             axarr[n,m].set_xlabel('Frequency (MHz)')
-            axarr[n,m].set_xlim(70,120)
+            if ant=='100':
+                axarr[n,m].set_xlim(70,120)
+            elif ant=='70': 
+                axarr[n,m].set_xlim(40,100)
         index+=1
 f.subplots_adjust(wspace=0)
 pylab.savefig(outdir+'total_resid_data.png',dpi=300)
@@ -227,9 +253,14 @@ f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
 f.suptitle('Rational Function Residuals, n=num order,m=denom order',size=10)
 for n in range(0,len(ns)):
     for m in range(0,len(ms)):
-        mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
-        std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
-        im = axarr[n,m].imshow(data[:,f80:f110]-Rfit[:,f80:f110,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f80],freqs[f110],times[-1],times[0]))
+        if ant=='100':
+            mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+            std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+            im = axarr[n,m].imshow(data[:,f80:f110]-Rfit[:,f80:f110,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f80],freqs[f110],times[-1],times[0]))
+        elif ant=='70':
+            mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
+            std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
+            im = axarr[n,m].imshow(data[:,f50:f90]-Rfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
         axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m])) 
         if (index)%len(ms)==0:
             cb = plt.colorbar(im,ax=axarr[n,m])
@@ -249,9 +280,15 @@ f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
 f.suptitle('Short Sub Rational Function Residuals, n=num order, m=denom order',size=10)
 for n in range(0,len(ns)):
     for m in range(0,len(ms)):
-        mean_val = ma.mean(ma.compressed(ma.array(mean_sKresid[n,rf80:rf110],mask=mean_sKrmask[n,rf80:rf110])))
-        std_val = ma.std(ma.compressed(ma.array(mean_sKresid[n,rf80:rf110],mask=mean_sKrmask[n,rf80:rf110])))
-        im = axarr[n,m].imshow(new_data[:,f80:f110]-sRfit[:,f80:f110,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f80],freqs[f110],times[-1],times[0]))
+        if ant=='100':
+            mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+            std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf80:rf110],mask=mean_Krmask[n,rf80:rf110])))
+            im = axarr[n,m].imshow(new_data[:,f80:f110]-sRfit[:,f80:f110,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f80],freqs[f110],times[-1],times[0]))
+
+        elif ant=='70':
+            mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
+            std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
+            im = axarr[n,m].imshow(new_data[:,f50:f90]-sRfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
         axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m])) 
         if (index)%len(ms)==0: 
             cb = plt.colorbar(im,ax=axarr[n,m])

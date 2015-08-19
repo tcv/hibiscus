@@ -66,16 +66,23 @@ Eff_sm_old = itp.UnivariateSpline(F_ant_old,Effic_old,s=0.01)
 #Best fit parameters to short data collected in the Karoo.
 fitshort = [9.43299312e-9,-1.16197388e-10,4.31005321e-13]
 
-#Load file for gsm data with 70 MHz antenna.
-gsm_data = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_data_full_100_Karoo.npy')
-gsm_times = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_sid_time_full_100_Karoo.npy')
+print sys.argv[1]
+ant = sys.argv[1].split('_')[-1]
 gsm_freqs = arange(50,111,1)
-f70_gsm = where(gsm_freqs<=85.)[0][-1]
+#Load file for gsm data with 70 MHz antenna.
+if ant=='100/':
+    gsm_data = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_data_full_100_Karoo.npy')
+    gsm_times = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_sid_time_full_100_Karoo.npy')
+    f70_gsm = where(gsm_freqs<=85.)[0][-1]
+elif ant=='70/':
+    gsm_data = numpy.load(supdir+'gsm_data_70_Karoo_test/gsm_data_full_70_Karoo.npy')
+    gsm_times = numpy.load(supdir+'gsm_data_70_Karoo_test/gsm_sid_time_full_70_Karoo.npy')
+    f70_gsm = where(gsm_freqs<=70.)[0][-1]
+
 max_gsm = where(gsm_data[:,f70_gsm]==max(gsm_data[:,f70_gsm]))[0]
 print max_gsm
 print len(gsm_times)
-#gsm_data = numpy.load(supdir+'gsm_data_full_70_Karoo.npy')
-#gsm_times = numpy.load(supdir+'gsm_sid_time_full_70_Karoo.npy')
+
 directories = os.listdir(indir)
 
 #Load files for full day of data. 
@@ -166,8 +173,14 @@ stack_data,stack_mask = cf.match_binning(gsm_times,freqs,sorttime,sortdata,sortm
 #Correct for time error in data using time of max signal.
 #70 MHz used as proxy for full dataset. 
 #Re-sort based upon the adjustment. 
-f70_gsm = where(gsm_freqs<=85.)[0][-1]
-f70_data = where(freqs<=85.)[0][-1]
+
+if ant=='100/':
+    f70_gsm = where(gsm_freqs<=85.)[0][-1]
+    f70_data = where(freqs<=85.)[0][-1]
+elif ant=='70/':
+    f70_gsm = where(gsm_freqs<=70.)[0][-1]
+    f70_data = where(freqs<=70.)[0][-1]
+
 
 data_70 = zeros(len(times))
 for i in range(0,len(times)):
@@ -250,7 +263,13 @@ pylab.ylabel('Temperature (Kelvin)')
 pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_mean.png',dpi=300)
 pylab.clf()
 
-Kfit,Kparams = cf.poly_fore(mean_data*Kdgsm,mean_mask,freqs,80.,110.,2,ones(len(mean_data)))
+if ant=='70/':
+   fit_min = 50.
+   fit_max = 90.
+elif ant=='100/':
+   fit_min = 80.
+   fit_max = 110.
+Kfit,Kparams = cf.poly_fore(mean_data*Kdgsm,mean_mask,freqs,fit_min,fit_max,2,ones(len(mean_data)))
 print Kparams
 print ma.min(mean_data*Kdgsm-Kfit)
 print ma.max(mean_data*Kdgsm-Kfit)
@@ -258,7 +277,7 @@ print ma.mean(mean_data*Kdgsm-Kfit)
 print ma.std(mean_data*Kdgsm-Kfit)
 
 pylab.scatter(freqs,mean_data*Kdgsm-Kfit,c='b',edgecolor='b',s=3)
-pylab.xlim(50,100)
+pylab.xlim(40,130)
 pylab.ylim(-100,100)
 pylab.grid()
 pylab.xlabel('Frequency (MHz)')
@@ -293,8 +312,13 @@ pylab.clf()
 #numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
 #numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
 #numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
-numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_100MHz_ant.npy',cal_data_masked)
-numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_100MHz_ant.npy',gsm_times)
-numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_100MHz_ant.npy',Kdgsm)
+if ant=='100/':
+    numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_100MHz_ant.npy',cal_data_masked)
+    numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_100MHz_ant.npy',gsm_times)
+    numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_100MHz_ant.npy',Kdgsm)
+elif ant=='70/':
+    numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
+    numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
+    numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
 
 
