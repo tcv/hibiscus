@@ -1,13 +1,11 @@
 """
 Set of scripts for doing things related to the gsm data generation process.
 """
-
-from numpy import *
 import pylab
-import numpy
+import numpy as np
 import scipy.interpolate as itp
 import numpy.ma as ma
-from scipy import optimize
+import scipy.optimize as opt
 import os
 import skrf as rf
 import ephem as eph
@@ -21,13 +19,12 @@ def get_gsm_radec(filename):
     (ra, dec for each healpix position).
     goes with the gsm data. 
     """
-    file = loadtxt(filename)
+    file = np.loadtxt(filename)
     ra_array = file[:,1]
-    dec_array = 90.*ones(len(file))-file[:,0]
-    file = []
+    dec_array = 90.*np.ones(len(file))-file[:,0]
 
-    ra_array = array(ra_array)
-    dec_array = array(dec_array)
+    ra_array = ma.array(ra_array)
+    dec_array = ma.array(dec_array)
 
     return ra_array,dec_array
 
@@ -38,10 +35,10 @@ def antenna_beam_pattern(filename,input_freqs):
     Done for a given frequency
     """
     
-    theta_array = zeros(181*181)
-    phi_array = zeros(181*181)
-    gaindb = -50.*ones(181*181)
-    gaindb2 = -50.*ones(181*181)
+    theta_array = np.zeros(181*181)
+    phi_array = np.zeros(181*181)
+    gaindb = -50.*np.ones(181*181)
+    gaindb2 = -50.*np.ones(181*181)
     larger = 0
     freq1 = 0
     freq2 = 0
@@ -95,35 +92,35 @@ def antenna_beam_full(filename,input_freqs):
     """
     theta_sim,phi_sim,gaindb=antenna_beam_pattern(filename,input_freqs)
     
-    theta_sim = theta_sim*pi/180.
-    phi_sim = phi_sim*pi/180.
+    theta_sim = theta_sim*np.pi/180.
+    phi_sim = phi_sim*np.pi/180.
 #    print 'Theta Range: ',ma.min(theta_sim),ma.max(theta_sim)
 #    print 'Phi Range: ',ma.min(phi_sim),ma.max(phi_sim)
-    curr_alt = zeros(len(phi_sim)*2)
-    curr_az = zeros(len(phi_sim)*2)
-    az_inds = zeros(181)
-    azs = arange(0,2.*pi,2*pi/181.) 
-    beam_data = -50.*ones(len(phi_sim)*2)
+    curr_alt = np.zeros(len(phi_sim)*2)
+    curr_az = np.zeros(len(phi_sim)*2)
+    az_inds = np.zeros(181)
+    azs = np.arange(0,2.*np.pi,2*np.pi/181.) 
+    beam_data = -50.*np.ones(len(phi_sim)*2)
     for p in range(0,len(phi_sim)):
         if theta_sim[p]<=0:
-            curr_az[p] = 2*pi-phi_sim[p]
-            curr_alt[p] = pi/2.+theta_sim[p]
+            curr_az[p] = 2*np.pi-phi_sim[p]
+            curr_alt[p] = np.pi/2.+theta_sim[p]
             curr_az[-p] = curr_az[p]
             curr_alt[-p] = -1.*curr_alt[p]
         else:
             curr_az[p] = phi_sim[p]
-            curr_alt[p] = pi/2.-theta_sim[p]
+            curr_alt[p] = np.pi/2.-theta_sim[p]
             curr_az[-p] = curr_az[p] 
             curr_alt[-p] = -1.*curr_alt[p]
         if curr_alt[p]==0:
-            sin_ind = where(abs(curr_az[p]-azs)<(2*pi/181.))
+            sin_ind = np.where(abs(curr_az[p]-azs)<(2*np.pi/181.))
             az_inds[sin_ind] = p
       
         beam_data[p] = gaindb[p]
 
     for p in range(len(phi_sim),2*len(phi_sim)):
         for th in range(0,181):
-            if abs(curr_az[p]-azs[th])<=(pi/180.):
+            if abs(curr_az[p]-azs[th])<=(np.pi/180.):
                 beam_data[p] = gaindb[az_inds[th]]
         
     return curr_az,curr_alt,beam_data
@@ -139,15 +136,15 @@ def gsm_temps(gsmdir,input_freqs,inds):
             if input_freqs%1.<=0.01:    
                 freqs1 = int(input_freqs)
                 fname = gsmdir+'radec'+str(int(freqs1))+'.dat'
-                gsmdata = loadtxt(fname)
+                gsmdata = np.loadtxt(fname)
                 freqs2 = freqs1
             else:
                 freqs1 = float(int(input_freqs))
                 freqs2 = freqs1+1
                 fname1 = gsmdir+'radec'+str(int(freqs1))+'.dat'
-                gsmdata1 = loadtxt(fname1)
+                gsmdata1 = np.loadtxt(fname1)
                 fname2 = gsmdir+'radec'+str(int(freqs2))+'.dat'
-                gsmdata2 = loadtxt(fname2)
+                gsmdata2 = np.loadtxt(fname2)
                 m = (gsmdata1-gsmdata2)/(freqs1-freqs2)
                 b = gsmdata1-m*freqs1
                 gsmdata = m*float(input_freqs)+b
@@ -155,19 +152,19 @@ def gsm_temps(gsmdir,input_freqs,inds):
             freqs1 = 130.
             freqs2 = freqs1
             fname = gsmdir+'radec112.dat'
-            gsmdatat = loadtxt(fname)
-            gsmdata = zeros(len(gsmdatat))
+            gsmdatat = np.loadtxt(fname)
+            gsmdata = np.zeros(len(gsmdatat))
     else:
         freqs1 = 40.
         freqs2 = freqs1
         fname = gsmdir+'radec50.dat'
-        gsmdatat = loadtxt(fname)
-        gsmdata = zeros(len(gsmdatat)) 
+        gsmdatat = np.loadtxt(fname)
+        gsmdata = np.zeros(len(gsmdatat)) 
     
 #    print "For the GSM Model Data"
 #    print "Input Frequency is: ", input_freqs, " MHz"
 #    print "Used Frequencies are: ",freqs1, " and " ,freqs2, " MHz"
-    used_data = zeros(len(inds))
+    used_data = np.zeros(len(inds))
     for i in range(0,len(inds)):
         used_data[i] =gsmdata[inds[i]]
 
@@ -186,8 +183,8 @@ def azel_loc(ra,dec,lat,lon,elevation,time,idate):
     date = eph.date(idate)+time/24.
     site.date = date
     site.pressure =0
-    curr_ra = eph.degrees(ra*pi/180.)
-    curr_dec = eph.degrees(dec*pi/180.)
+    curr_ra = eph.degrees(ra*np.pi/180.)
+    curr_dec = eph.degrees(dec*np.pi/180.)
     point = eph.FixedBody()
     point._ra = curr_ra
     point._dec = curr_dec
@@ -214,15 +211,15 @@ def radec_sim(curr_az,curr_alt,lat,lon,elevation,time,idate):
 #    print 'Altitude range: ',ma.min(curr_alt), ma.max(curr_alt)
 #    print 'Azimuth range: ',ma.min(curr_az),ma.max(curr_az)
      
-    ra = zeros(len(curr_az))
-    dec = zeros(len(curr_az))
+    ra = np.zeros(len(curr_az))
+    dec = np.zeros(len(curr_az))
     for p in range(0,len(curr_az)):
         ra[p],dec[p]=site.radec_of(curr_az[p],curr_alt[p])
 
 #    print 'RA range is: ',ma.min(ra),ma.max(ra)
 #    print 'DEC range is: ',ma.min(dec),ma.max(dec)
 
-    sim_var = vstack((ra,dec)).T
+    sim_var = np.vstack((ra,dec)).T
     
     return sim_var
  
@@ -239,10 +236,10 @@ def calc_ra_shift(lat,lon,elevation,time1,time2,idate):
     site.pressure =0
 
     site.date = date1
-    ra1,dec1 = site.radec_of(pi/2.,pi/4.)
+    ra1,dec1 = site.radec_of(np.pi/2.,np.pi/4.)
     site.date = date2
-    ra2,dec2 = site.radec_of(pi/2.,pi/4.)
-    radiff = float(int((ra2-ra1)*180./pi*1e2)/1e2)
+    ra2,dec2 = site.radec_of(np.pi/2.,np.pi/4.)
+    radiff = float(int((ra2-ra1)*180./np.pi*1.e2)/1.e2)
     return radiff
 
 def gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate):
@@ -250,10 +247,9 @@ def gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate):
     Creates the appropriate gsm array for a given time and freq
     """
 
-    alts = zeros(len(ras))
-    azs = zeros(len(ras))
-    #freqs_gsm = []
-    gsm_array = zeros(len(ras))
+    alts = np.zeros(len(ras))
+    azs = np.zeros(len(ras))
+    gsm_array = np.zeros(len(ras))
     len_a  = 0
     for i in range(0,len(ras)):
         sin_alt, sin_az = azel_loc(ras[i],decs[i],lat,lon,elevation,time,idate)
@@ -264,13 +260,11 @@ def gsm_comp(gsmdata,ras,decs,lat,lon,elevation,time,idate):
             len_a = len_a+1
 
         
-    alts = array(alts[0:len_a-1])
-    azs = array(azs[0:len_a-1])
-    gsm_array = array(gsm_array[0:len_a-1])
+    alts = ma.array(alts[0:len_a-1])
+    azs = ma.array(azs[0:len_a-1])
+    gsm_array = ma.array(gsm_array[0:len_a-1])
 
-    gsm_var = vstack((alts,azs)).T
-    alts = []
-    azs = []    
+    gsm_var = np.vstack((alts,azs)).T
     
     return gsm_array, gsm_var
 
@@ -282,19 +276,19 @@ def sim_comp(beamfile,freqs):
 
     theta_sim,phi_sim,gaindb = antenna_beam_pattern(beamfile,freqs)
 
-    theta_sim = theta_sim*pi/180.
-    phi_sim = phi_sim*pi/180.
-    alt_sim = zeros(len(phi_sim))
-    az_sim = zeros(len(phi_sim))
+    theta_sim = theta_sim*np.pi/180.
+    phi_sim = phi_sim*np.pi/180.
+    alt_sim = np.zeros(len(phi_sim))
+    az_sim = np.zeros(len(phi_sim))
     for p in range(0,len(phi_sim)):
         if theta_sim[p]<0:
-            az_sim[p] = 2*pi - phi_sim[p]
-            alt_sim[p] = pi/2. +theta_sim[p]
+            az_sim[p] = 2*np.pi - phi_sim[p]
+            alt_sim[p] = np.pi/2. +theta_sim[p]
         else:
             az_sim[p] = phi_sim[p]
-            alt_sim[p] = pi/2.-theta_sim[p]
+            alt_sim[p] = np.pi/2.-theta_sim[p]
             
-    sim_var = vstack((alt_sim,az_sim)).T
+    sim_var = np.vstack((alt_sim,az_sim)).T
 
     return gaindb, sim_var
 
@@ -310,8 +304,8 @@ def sim_beam_interp(gsm_var,gaindb,sim_var):
 
 
     gsm_gain = func_gain(gsm_var)
-    gain_beam = pow(10.,0.05*gsm_gain)
-    nandata = where(isnan(gain_beam))
+    gain_beam = np.pow(10.,0.05*gsm_gain)
+    nandata = np.where(np.isnan(gain_beam))
     for i in range(0,len(nandata[0])):
         gain_beam[nandata[0][i]]=0.0
 
@@ -323,7 +317,7 @@ def ant_beam_simple(gsm_array,gain_beam):
     Both arrays must have the same RA/DEC array. 
     """    
     full_beam = gain_beam*gsm_array
-    nandata = where(isnan(full_beam))
+    nandata = np.where(np.isnan(full_beam))
     for i in range(0,len(nandata[0])):
         full_beam[nandata[0][i]]=0.0
  
@@ -344,7 +338,7 @@ def ant_beam(gsm_array, gsm_var,gaindb,sim_var,label,freq,plotf):
     gain_beam = sim_beam_interp(gsm_var,gaindb,sim_var)
     full_beam = gain_beam*gsm_array
 
-    nandata = where(isnan(full_beam))
+    nandata = np.where(np.isnan(full_beam))
     for i in range(0,len(nandata[0])):
         full_beam[nandata[0][i]]=0.0
 
@@ -355,7 +349,7 @@ def ant_beam(gsm_array, gsm_var,gaindb,sim_var,label,freq,plotf):
     if freq==plotf:
         plt.rc('font',size=8)
         plt.subplot(411)
-        plt.scatter(sim_var[:,0]*180./pi,sim_var[:,1]*180./pi,s=1,linewidth=0,c=pow(10.,0.05*gaindb),vmin=0,vmax=3,cmap=cm.jet)
+        plt.scatter(sim_var[:,0]*180./np.pi,sim_var[:,1]*180./np.pi,s=1,linewidth=0,c=np.pow(10.,0.05*gaindb),vmin=0,vmax=3,cmap=cm.jet)
         plt.colorbar() 
         plt.xlim(0,360)
         plt.ylim(-90,90)
@@ -398,9 +392,9 @@ def find_fpt(f, phi,theta,f_array,phi_array,theta_array):
     """
     Determines the appropriate indices needed for beam sim data selection.
     """
-    f_idx = where(f_array<=f)[0][-1]
-    t_idx = where(theta_array<=theta)[0][-1]
-    p_idx = where(phi_array<=phi)[0][-1]
+    f_idx = np.where(f_array<=f)[0][-1]
+    t_idx = np.where(theta_array<=theta)[0][-1]
+    p_idx = np.where(phi_array<=phi)[0][-1]
 
     return f_idx,t_idx,p_idx
 
@@ -414,7 +408,7 @@ def gain_linear(t_index,p_index,f_index,gaindb):
     MAXP = 181.
 
     P = gaindb[t_index+MAXT*(p_index+MAXP*f_index)]
-    p = power(10.,0.05*P)
+    p = np.power(10.,0.05*P)
 
     return p
 
@@ -437,7 +431,7 @@ def findg(freq,phi,theta,gaindb,f,p,t):
     if t < 0.:
         return 0.
 
-    if isnan(p)==True:
+    if np.isnan(p)==True:
         p=180.
     elif p>180.:
         p -=180.

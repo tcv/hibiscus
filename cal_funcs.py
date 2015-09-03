@@ -1,8 +1,7 @@
-from numpy import *
-import pylab
+import numpy as np
+import pylab as py
 import scipy.interpolate as itp
 import numpy.ma as ma
-from scipy import optimize
 import scipy.optimize as opt
 import os
 import skrf as rf
@@ -24,11 +23,11 @@ def match_binning(gsm_time,freq,time,data,mask):
     outputs are new data and mask array
     """
     stack_time = gsm_time
-    stack_data = zeros((len(stack_time),len(freq)))
-    stack_mask = zeros((len(stack_time),len(freq)))
+    stack_data = np.zeros((len(stack_time),len(freq)))
+    stack_mask = np.zeros((len(stack_time),len(freq)))
     for i in range(0,len(stack_time)):
-        sub_data = zeros((len(time),len(freq)))
-        sub_mask = zeros((len(time),len(freq)))
+        sub_data = np.zeros((len(time),len(freq)))
+        sub_mask = np.zeros((len(time),len(freq)))
         num_mean = 0.
         for j in range(0,len(time)):
             if abs(stack_time[i]-time[j])<=(stack_time[1]-stack_time[0])/2.:
@@ -69,10 +68,10 @@ def lim_bin(freq,data,mask,gsm_freq,gsm_data,gsm_time):
     lim_gsm = matching gsm array
     lim_time = matching time array
     """
-    lim_stack = zeros((len(data),len(data[0])))
-    lim_mask = zeros((len(data),len(data[0])))
-    lim_gsm = zeros((len(data),len(data[0])))
-    lim_time = zeros(len(data))
+    lim_stack = np.zeros((len(data),len(data[0])))
+    lim_mask = np.zeros((len(data),len(data[0])))
+    lim_gsm = np.zeros((len(data),len(data[0])))
+    lim_time = np.zeros(len(data))
     int = 0
     
     for i in range(0,len(data)):
@@ -94,27 +93,25 @@ def time_mean(data,mask):
     """
     Calculates time mean for a 2 d array (1st ind time, 2nd ind freq).
     """
-    mean_data = zeros(len(data[0]))
-    mean_mask = zeros(len(data[0]))
-    data = array(data)
-    mask = array(mask)
-    print shape(data),shape(mask)
+    mean_data = np.zeros(len(data[0]))
+    mean_mask = np.zeros(len(data[0]))
+    data = ma.array(data)
+    mask = ma.array(mask)
     num_time = len(mask)
     num_freq = len(mask[0])
-    mod_mask = zeros((num_time,num_freq))
+    mod_mask = np.zeros((num_time,num_freq))
     int = 0
 
     for i in range(0,num_time):
         single_mask = mask[i]
         if sum(single_mask)>=len(single_mask)/2.:
-            new_mask = ones(len(single_mask))
+            new_mask = np.ones(len(single_mask))
         else:
-            new_mask = zeros(len(single_mask))
+            new_mask = np.zeros(len(single_mask))
         mod_mask[int] = new_mask
         int +=1
 
-#    mod_mask = mod_mask[0:int]
-    mod_mask = array(mod_mask)
+    mod_mask = ma.array(mod_mask)
     int2 = 0 
     for i in range(0,num_freq):
         single_mask = mod_mask[:,i]
@@ -122,7 +119,6 @@ def time_mean(data,mask):
         if num_time<=bad_num:
             mean_data[int2] = 0.0
             mean_mask[int2] = 1.0
-#            int2+=1
         else:
             single = ma.array(data[:,i],mask=single_mask)
             single_comp = ma.compressed(single)
@@ -130,9 +126,6 @@ def time_mean(data,mask):
             mean_mask[int2] = 0.0
         int2+=1
     
-#    mean_data = mean_data[0:int2]
-#    mean_mask = mean_mask[0:int2]
-
     return mean_data,mean_mask
 
 def gain_calc(data,masked,gsm,K0):
@@ -178,17 +171,17 @@ def poly_fore(data,masked,freq,minf,maxf,n,std):
     min_ind = 0
     max_ind = -1
     if minf>freq_comp[0]:
-        min_ind = where(freq_comp<=minf)[0][-1]
+        min_ind = np.where(freq_comp<=minf)[0][-1]
     if maxf<freq_comp[-1]:
-        max_ind = where(freq_comp<=maxf)[0][-1]
+        max_ind = np.where(freq_comp<=maxf)[0][-1]
     mid_ind = min_ind+(max_ind-min_ind)/2
 
-    log_data = log10(data_comp[min_ind:max_ind])
-    log_freq = log10(freq_comp[min_ind:max_ind]/freq_comp[mid_ind])
+    log_data = np.log10(data_comp[min_ind:max_ind])
+    log_freq = np.log10(freq_comp[min_ind:max_ind]/freq_comp[mid_ind])
     weights = 1/std_comp[min_ind:max_ind]
     
     fit_params = poly.polyfit(log_freq,log_data,n,w=weights)
-    dfit = 10**(poly.polyval(log10(freq/freq_comp[mid_ind]),fit_params))
+    dfit = 10**(poly.polyval(np.log10(freq/freq_comp[mid_ind]),fit_params))
 
     return dfit, fit_params
 
@@ -244,6 +237,7 @@ def rational_fit(n,m):
                 fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/p[5]
             elif m==1:
                 fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/(p[5]+p[6]*x)
+
             elif m==2: 
                 fitfunc = lambda p,x: (p[0]+p[1]*x+p[2]*x**2+p[3]*x**3+p[4]*x**4)/(p[5]+p[6]*x+p[7]*x**2)
             else:
@@ -274,19 +268,19 @@ def rat_fore(data,masked,freq,minf,maxf,n,m):
     min_ind = 0
     max_ind = -1
     if minf>freq_comp[0]:
-        min_ind = where(freq_comp<=minf)[0][-1]
+        min_ind = np.where(freq_comp<=minf)[0][-1]
     if maxf<freq_comp[-1]:
-        max_ind = where(freq_comp<=maxf)[0][-1]
+        max_ind = np.where(freq_comp<=maxf)[0][-1]
     mid_ind = min_ind+(max_ind-min_ind)/2 
  
-    log_data = log10(data_comp[min_ind:max_ind])
-    log_freq = log10(freq_comp[min_ind:max_ind]/freq_comp[mid_ind])
+    log_data = np.log10(data_comp[min_ind:max_ind])
+    log_freq = np.log10(freq_comp[min_ind:max_ind]/freq_comp[mid_ind])
     
-    p0 = ones(n+m+2)
+    p0 = np.ones(n+m+2)
     fitfunc = rational_fit(n,m)
     errfunc = lambda p,x,y: fitfunc(p,x)-y
     pf,success = opt.leastsq(errfunc,p0[:],args=(log_freq,log_data))
-#    print pf
-    dfit = 10**(fitfunc(pf,log10(freq/freq_comp[mid_ind])))
+    dfit = 10**(fitfunc(pf,np.log10(freq/freq_comp[mid_ind])))
+
     return dfit,pf
 

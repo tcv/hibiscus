@@ -1,4 +1,4 @@
-from numpy import *
+import numpy as np
 import pylab
 import scipy.interpolate as itp
 import numpy.ma as ma
@@ -30,8 +30,8 @@ def loadsingle(fname):
     mask_data = []
     freq_data = []
     time =float(file_name.split('-')[2])*24.0+float(file_name.split('-')[3])+float(file_name.split('-')[4])/60+float(sec)/3600
-    file_dump = loadtxt(fname)
-    file_dump = array(file_dump)
+    file_dump = np.loadtxt(fname)
+    file_dump = ma.array(file_dump)
     if len(file_dump)>5:
         file_data = file_dump
     elif len(file_dump)==2:
@@ -126,34 +126,34 @@ def flagging(data,freq,sigma_thres,linscale):
     Output is flagging mask for input data array.
     """
 
-    mask = zeros(len(data))
-    nanmask = where(isnan(data))[0]
+    mask = np.zeros(len(data))
+    nanmask = np.where(np.isnan(data))[0]
     mask[nanmask] = 1.0
-    infmask = where(isinf(data))[0]
+    infmask = np.where(np.isinf(data))[0]
     mask[infmask] = 1.0
     scale = linscale
     for f in range(0, len(data)/scale-1):
-        (Fa,Fb) = polyfit(freq[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
-        flat_data = data[f*scale:(f+1)*scale]/polyval([Fa,Fb],freq[f*scale:(f+1)*scale])
+        (Fa,Fb) = np.polyfit(freq[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
+        flat_data = data[f*scale:(f+1)*scale]/np.polyval([Fa,Fb],freq[f*scale:(f+1)*scale])
         flat_sigma = ma.std(flat_data)
         flat_mean = ma.mean(flat_data)
         max_accept = 1.0+flat_sigma*sigma_thres
         min_accept = 1.0-flat_sigma*sigma_thres
-        maxmask = array(where(flat_data>max_accept)[0])
-        minmask = array(where(flat_data<min_accept)[0])
+        maxmask = ma.array(np.where(flat_data>max_accept)[0])
+        minmask = ma.array(np.where(flat_data<min_accept)[0])
         maxmask = maxmask+f*scale
         minmask = minmask+f*scale
         mask[maxmask] = 1.0
         mask[minmask] = 1.0
         
-    (Fa,Fb) = polyfit(freq[(f+1)*scale:-1],data[(f+1)*scale:-1],1)
-    flat_data = data[(f+1)*scale:-1]/polyval([Fa,Fb],freq[(f+1)*scale:-1])
+    (Fa,Fb) = np.polyfit(freq[(f+1)*scale:-1],data[(f+1)*scale:-1],1)
+    flat_data = data[(f+1)*scale:-1]/np.polyval([Fa,Fb],freq[(f+1)*scale:-1])
     flat_sigma = ma.std(flat_data)
     flat_mean = ma.mean(flat_data)
     max_accept = 1.0+flat_sigma*sigma_thres
     min_accept = 1.0-flat_sigma*sigma_thres
-    maxmask = array(where(flat_data>max_accept)[0])
-    minmask = array(where(flat_data<min_accept)[0])
+    maxmask = ma.array(np.where(flat_data>max_accept)[0])
+    minmask = ma.array(np.where(flat_data<min_accept)[0])
     maxmask = maxmask+(f+1)*scale
     minmask = minmask+(f+1)*scale
     mask[maxmask] = 1.0
@@ -169,12 +169,12 @@ def threshold_flag(data,masked,freq,value):
     Value is a percentage +/- at which the data is assumed to be bad. 
     Will only grab large outliers or edges of frequency band. 
     """
-    new_mask = zeros(len(data))
+    new_mask = np.zeros(len(data))
     for i in range(0,len(data)):
         if masked[i]==1.0:
             new_mask[i] = 1.0
 
-    f70 = where(freq<=90.)[0][-1]
+    f70 = np.where(freq<=90.)[0][-1]
     dfit = data[f70]*(freq/90.)**(-2.5)
     frac = value/100.
     for i in range(0,len(data)):
@@ -191,7 +191,7 @@ def cal_flag(short_data,short_fit,masked,freq,cutoff):
     Flags frequencies with bad short data compared to the fit.
     Note, this will flag frequencies outside the short fit band.
     """
-    new_mask = zeros(len(masked))
+    new_mask = np.zeros(len(masked))
 
     for i in range(0,len(masked)):
         if masked[i]==1.0:
@@ -210,7 +210,7 @@ def spike_flag(data,masked,freq,percent):
     percent is a percentage level cut (100 would be twice the 11 bin average)
     Needs to be applied to masked data.
     """
-    new_mask = zeros(len(data))
+    new_mask = np.zeros(len(data))
     new_array = ma.array(data,mask=masked)
     new_comp = ma.compressed(new_array)
     freq_array = ma.array(freq,mask=masked)
@@ -252,48 +252,48 @@ def timeflag(data,masked,time,sigma_thres,linscale):
     """
 
     scale = linscale
-    new_mask = zeros(len(data))
+    new_mask = np.zeros(len(data))
     for i in range(0,len(new_mask)):
         if masked[i]==1.0:
             new_mask[i]=1.0
 
     f=0
     if (len(data)/scale-1)<=1:
-        (Fa,Fb) = polyfit(time,data,1)
-        flat_data = data/polyval([Fa,Fb],time)
+        (Fa,Fb) = np.polyfit(time,data,1)
+        flat_data = data/np.polyval([Fa,Fb],time)
         flat_sigma = ma.std(flat_data)
         flat_mean = ma.mean(flat_data)
         max_accept = 1.0+flat_sigma*sigma_thres
         min_accept = 1.0-flat_sigma*sigma_thres
-        maxmask = array(where(flat_data>max_accept)[0])
-        minmask = array(where(flat_data<min_accept)[0])
+        maxmask = ma.array(np.where(flat_data>max_accept)[0])
+        minmask = ma.array(np.where(flat_data<min_accept)[0])
         maxmask = maxmask
         minmask = minmask
         new_mask[maxmask] = 1.0
         new_mask[minmask] = 1.0
     elif(len(data)/scale-1)>1:
         for f in range(0, len(data)/scale-1):
-            (Fa,Fb) = polyfit(time[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
-            flat_data = data[f*scale:(f+1)*scale]/polyval([Fa,Fb],time[f*scale:(f+1)*scale])
+            (Fa,Fb) = np.polyfit(time[f*scale:(f+1)*scale],data[f*scale:(f+1)*scale],1)
+            flat_data = data[f*scale:(f+1)*scale]/np.polyval([Fa,Fb],time[f*scale:(f+1)*scale])
             flat_sigma = ma.std(flat_data)
             flat_mean = ma.mean(flat_data)
             max_accept = 1.0+flat_sigma*sigma_thres
             min_accept = 1.0-flat_sigma*sigma_thres
-            maxmask = array(where(flat_data>max_accept)[0])
-            minmask = array(where(flat_data<min_accept)[0])
+            maxmask = ma.array(np.where(flat_data>max_accept)[0])
+            minmask = ma.array(np.where(flat_data<min_accept)[0])
             maxmask = maxmask+f*scale
             minmask = minmask+f*scale
             new_mask[maxmask] = 1.0
             new_mask[minmask] = 1.0
         
-        (Fa,Fb) = polyfit(time[(f+1)*scale:-1],data[(f+1)*scale:-1],1)
-        flat_data = data[(f+1)*scale:-1]/polyval([Fa,Fb],time[(f+1)*scale:-1])
+        (Fa,Fb) = np.polyfit(time[(f+1)*scale:-1],data[(f+1)*scale:-1],1)
+        flat_data = data[(f+1)*scale:-1]/np.polyval([Fa,Fb],time[(f+1)*scale:-1])
         flat_sigma = ma.std(flat_data)
         flat_mean = ma.mean(flat_data)
         max_accept = 1.0+flat_sigma*sigma_thres
         min_accept = 1.0-flat_sigma*sigma_thres
-        maxmask = array(where(flat_data>max_accept)[0])
-        minmask = array(where(flat_data<min_accept)[0])
+        maxmask = ma.array(np.where(flat_data>max_accept)[0])
+        minmask = ma.array(np.where(flat_data<min_accept)[0])
         maxmask = maxmask+(f+1)*scale
         minmask = minmask+(f+1)*scale
         new_mask[maxmask] = 1.0
@@ -311,9 +311,9 @@ def rebin(data,masked,freq,binscale):
     """
 
     if binscale > 1:
-        new_data = zeros(len(data)/binscale)
-        new_mask = zeros(len(data)/binscale)
-        new_freq = zeros(len(data)/binscale)
+        new_data = np.zeros(len(data)/binscale)
+        new_mask = np.zeros(len(data)/binscale)
+        new_freq = np.zeros(len(data)/binscale)
         f=0
         for f in range(0, len(new_data)-1):
             if len(masked[f*binscale:(f+1)*binscale])==sum(masked[f*binscale:(f+1)*binscale]):
@@ -346,18 +346,20 @@ def truncate(data,mask,freq,minfreq,maxfreq):
     Removes the data that is outside a given range to shrink array size.
     Expects freq, minfreq, maxfreq to be in same units. 
     """
-    new_data = []
-    new_freq = []
-    new_mask = []
+    new_data = np.zeros(len(data))
+    new_freq = np.zeros(len(data))
+    new_mask = np.zeros(len(data))
+    index = 0
     for i in range(0,len(freq)):
         if freq[i]>minfreq:
             if freq[i]<maxfreq:
-                new_data.append(data[i])
-                new_freq.append(freq[i])
-                new_mask.append(mask[i])
-    new_data = array(new_data)
-    new_mask = array(new_mask)
-    new_freq = array(new_freq)
+                new_data[index]=data[i]
+                new_freq[index]=freq[i]
+                new_mask[index]=mask[i]
+                index +=1
+    new_data = new_data[0:index]
+    new_freq = new_freq[0:index]
+    new_mask = new_mask[0:index]
 
     return new_data,new_mask,new_freq
 
@@ -367,10 +369,10 @@ def timerebin(data,masked):
     Assumes that the input is a two dimensional array with corresponding mask
     Output is single dataset with corresponding mask
     """
-    new_data = zeros(len(data[0]))
-    new_mask = zeros(len(data[0]))
-    data = array(data)
-    masked = array(masked)
+    new_data = np.zeros(len(data[0]))
+    new_mask = np.zeros(len(data[0]))
+    data = ma.array(data)
+    masked = ma.array(masked)
     
     for f in range(0,len(data[0])):
         if sum(masked[:,f])==len(masked[:,f]):
@@ -382,7 +384,6 @@ def timerebin(data,masked):
         if sum(masked[:,f])>=len(data[0])/2.:
             new_mask[f] = 1.0
         
-
     return new_data,new_mask
 
 def sidereal(time,idate,longitude,latitude):
@@ -394,13 +395,11 @@ def sidereal(time,idate,longitude,latitude):
     site = eph.Observer()
     site.lon = longitude
     site.lat = latitude
-#    guad.lon = '-118.3'
-#    guad.lat = '28.8833'
     
     single = eph.date(initial+time/24.)
     site.date = single
     single_time = site.sidereal_time()
-    sidereal_hour = single_time*12./pi
+    sidereal_hour = single_time*12./np.pi
 
     return sidereal_hour
 

@@ -71,10 +71,10 @@ st,sf,short_data,sm,sfreq,sv,ste = ff.loadsingle(supdir+'2015-04-05-00-06-26_Ch_
 #short_fit = poly.polyval(freqs,fitshort)
 
 fitshort = [4.47140321e-11,3.09422597,4.15995054,9.43146423e-09,-1.16198506e-10,4.31190367e-13]
-def func(x,a,b,c,d,e,f):
+def funci(x,a,b,c,d,e,f):
     return a*cos(2*pi*x/b+c)+d+e*x+f*x**2
-fitshort,cov=opt.curve_fit(func,freqs,short_data,fitshort[:])
-short_fit = func(freqs,fitshort[0],fitshort[1],fitshort[2],fitshort[3],fitshort[4],fitshort[5])
+fitshort,cov=opt.curve_fit(funci,freqs,short_data,fitshort[:])
+short_fit = funci(freqs,fitshort[0],fitshort[1],fitshort[2],fitshort[3],fitshort[4],fitshort[5])
 
 smask = zeros(len(freqs))
 rebin_short,short_mask,short_f = ff.rebin((short_data)*Kdgsm,smask,freqs,fscale)
@@ -82,7 +82,7 @@ rebin_short,short_mask,short_f = ff.rebin((short_data)*Kdgsm,smask,freqs,fscale)
 #short_sm = smooth_short(freqs)
 #new_data = data - short_sm 
 new_data = data - short_fit*Kdgsm
-srdata = rebin_data-func(short_f,fitshort[0],fitshort[1],fitshort[2],fitshort[3],fitshort[4],fitshort[5])
+srdata = rebin_data-funci(short_f,fitshort[0],fitshort[1],fitshort[2],fitshort[3],fitshort[4],fitshort[5])
 f50 = where(freqs<=50.)[0][-1]
 f90 = where(freqs<=90.)[0][-1]
 f80 = where(freqs<=80.)[0][-1]
@@ -132,6 +132,14 @@ mean_Rmask = zeros((len(freqs),len(ns),len(ms)))
 smean_Rf = zeros((len(freqs),len(ns),len(ms)))
 smean_Rmask = zeros((len(freqs),len(ns),len(ms)))
 
+fRparams = zeros((len(data),len(ns),len(ms),5))
+fRdata = zeros((len(data),len(freqs),len(ns),len(ms)))
+
+def func(x,a,b,c,d,e):
+    return abs(a)*cos(2*pi*x/b+c%(2*pi))+d+e*x
+rf_params = [5.,3.,0.01,10.,1.]
+fit_min = 50
+fit_max = 110
 for r in ns:
     Kparams= zeros((len(data),r))
     sKparams=zeros((len(data),r))
@@ -151,26 +159,32 @@ for r in ns:
             sKfit[t], sKparams[t] = cf.poly_fore(new_data[t],mask[t],freqs,fit_min,fit_max,r-1,ones(len(data[t])))
             for m in ms:
                 Rfit[t,:,r-ns[0],m-ms[0]], Rp = cf.rat_fore(data[t],mask[t],freqs,fit_min,fit_max,r-1,m)
-#                print shape(Rp)
                 Rparams[t,m-ms[0],0:(len(Rp))] = Rp
                 sRfit[t,:,r-ns[0],m-ms[0]], sRp = cf.rat_fore(new_data[t],mask[t],freqs,fit_min,fit_max,r-1,m)
-#                print shape(sRp)
                 sRparams[t,m-ms[0],0:(len(sRp))] = sRp
         rdata[t],rmask[t],nf = ff.rebin(data[t]-Kfit[t],mask[t],freqs,fscale)
-#        nandata = where(isnan(rdata))
-#        rdata[nandata]=0.
         srdata[t],srmask[t],nf = ff.rebin(new_data[t]-sKfit[t],mask[t],freqs,fscale)
-#        nandata = where(isnan(srdata))
-#        srdata[nandata] = 0.
+        rf_params = [5.,3.,0.01,10.,1.]
+
         for m in ms:
             rrdata[t,:,m-ms[0]],rrmask[t,:,m-ms[0]],nf = ff.rebin(data[t]-Rfit[t,:,r-ns[0],m-ms[0]],mask[t],freqs,fscale) 
             rsrdata[t,:,m-ms[0]],rsrmask[t,:,m-ms[0]],nf = ff.rebin(new_data[t]-sRfit[t,:,r-ns[0],m-ms[0]],mask[t],freqs,fscale)
-    
-#    nandata = where(isnan(rrdata))
-#    rrdata[nandata] = 0.0
-#    nandata = where(isnan(rsrdata))
-#    rsrdata[nandata] = 0.0
+ 
+            rfmin = where(freqs<=(fit_min+15.))[0][-1]
+            rfmax = where(freqs<=(fit_min+20.))[0][-1]
+            if ma.mean(data[t,rfmin:rfmax])>0.0:
+                try:
+                    rf_params,cov = opt.curve_fit(func,freqs[rfmin:rfmax],data[t,rfmin:rfmax]-Rfit[t,rfmin:rfmax,r-ns[0],m-ms[0]],rf_params[:],maxfev=5000)
 
+                    fRparams[t,r-ns[0],m-ms[0]] = rf_params
+                    fRdata[t,:,r-ns[0],m-ms[0]] = abs(rf_params[0])*cos(2*pi*freqs/rf_params[1]+rf_params[2]%(2*pi))
+                except RuntimeError:
+                    print 'fit failed at time ',t,' m value ',m,' and n value ',r
+                
+#        print t,r,m
+            
+    print ma.mean(fRparams,axis=0)
+    print ma.std(fRparams,axis=0)
     mean_Kf[:,r-ns[0]],mean_Kmask[:,r-ns[0]] = cf.time_mean(Kfit,mask)
     smean_Kf[:,r-ns[0]],smean_Kmask[:,r-ns[0]] = cf.time_mean(sKfit,mask)
     mean_Kresid[r-ns[0],:],mean_Krmask[r-ns[0],:] = cf.time_mean(rdata,rmask)
@@ -181,6 +195,7 @@ for r in ns:
         mean_Rresid[r-ns[0],i,:],mean_Rrmask[r-ns[0],i,:] = cf.time_mean(rrdata[:,:,i],rrmask[:,:,i]) 
         smean_Rf[:,r-ns[0],i],smean_Rmask[:,r-ns[0],i] = cf.time_mean(sRfit[:,:,r-ns[0],i],mask)
         mean_sRresid[r-ns[0],i,:],mean_sRrmask[r-ns[0],i,:] = cf.time_mean(rsrdata[:,:,i],rsrmask[:,:,i])
+
 
 index=1
 pylab.rc('font',size=6)
@@ -260,7 +275,7 @@ for n in range(0,len(ns)):
         elif ant=='70':
             mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
             std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
-            im = axarr[n,m].imshow(data[:,f50:f90]-Rfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
+            im = axarr[n,m].imshow(data[:,f50:f90]-Rfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=40./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
         axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m])) 
         if (index)%len(ms)==0:
             cb = plt.colorbar(im,ax=axarr[n,m])
@@ -288,7 +303,7 @@ for n in range(0,len(ns)):
         elif ant=='70':
             mean_val = ma.mean(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
             std_val = ma.std(ma.compressed(ma.array(mean_Kresid[n,rf50:rf90],mask=mean_Krmask[n,rf50:rf90])))
-            im = axarr[n,m].imshow(new_data[:,f50:f90]-sRfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
+            im = axarr[n,m].imshow(new_data[:,f50:f90]-sRfit[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=40./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
         axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m])) 
         if (index)%len(ms)==0: 
             cb = plt.colorbar(im,ax=axarr[n,m])
@@ -302,4 +317,53 @@ f.subplots_adjust(wspace=0)
 pylab.savefig(outdir+'short_R_resid_distribution_data.png',dpi=300)
 pylab.clf()
 
+index=1
+pylab.rc('font',size=7) 
+f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
+f.suptitle('Rational Function Resid w/ Sin remove, n=num order, m=denom order',size=10)
+for n in range(0,len(ns)):
+    for m in range(0,len(ms)):
+        if ant=='100':
+            mean_val = ma.mean(ma.compressed(ma.array(data[:,f80:f110]-Rfit[:,f80:f110,n,m],mask=mask[:,f80:f110])))
+            std_val = ma.std(ma.compressed(ma.array(data[:,f80:f110]-Rfit[:,f80:f110,n,m],mask=mask[:,f80:f110])))
+            im = axarr[n,m].imshow((data[:,f80:f110]-Rfit[:,f80:f110,n,m])-fRdata[:,f80:f110,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=30./24.,extent=(freqs[f80],freqs[f110],times[-1],times[0]))
+
+        elif ant=='70': 
+            mean_val = ma.mean(ma.compressed(ma.array(data[:,f50:f90]-Rfit[:,f50:f90,n,m],mask=mask[:,f50:f90])))
+            std_val = ma.std(ma.compressed(ma.array(data[:,f50:f90]-Rfit[:,f50:f90,n,m],mask=mask[:,f50:f90])))
+            im = axarr[n,m].imshow((data[:,f50:f90]-Rfit[:,f50:f90,n,m])-fRdata[:,f50:f90,n,m],vmin=mean_val-std_val,vmax=mean_val+std_val,aspect=40./24.,extent=(freqs[f50],freqs[f90],times[-1],times[0]))
+        axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m]))
+        if (index)%len(ms)==0:
+            cb = plt.colorbar(im,ax=axarr[n,m]) 
+            cb.set_label('Temp Resid (K)')
+        if (index)%len(ms)==1: 
+            axarr[n,m].set_ylabel('Sidereal Time (Hrs)')
+        if (index)>((len(ns)-1)*len(ms)):
+            axarr[n,m].set_xlabel('Frequency (MHz)')
+        index+=1
+f.subplots_adjust(wspace=0) 
+pylab.savefig(outdir+'R_resid_cos_fit_distribution_data.png',dpi=300)
+pylab.clf()
+
+index=1
+pylab.rc('font',size=6)
+f,axarr = plt.subplots(len(ns),len(ms),sharex='col',sharey='row')
+f.suptitle('Cosine Fit Parameters, n=num order,m=denom order',size=10)
+for n in range(0,len(ns)):
+    for m in range(0,len(ms)):
+        axarr[n,m].scatter(ma.compressed(ma.array(times,mask=tmask)),ma.compressed(ma.array(fRparams[:,n,m,0],mask=tmask)),s=1,c='b',edgecolor='b',label='a (K) ')
+        axarr[n,m].scatter(ma.compressed(ma.array(times,mask=tmask)),ma.compressed(ma.array(fRparams[:,n,m,1],mask=tmask)),s=1,c='c',edgecolor='c',label='b (MHz^-1)')
+        axarr[n,m].scatter(ma.compressed(ma.array(times,mask=tmask)),ma.compressed(ma.array(fRparams[:,n,m,2]%(2*pi),mask=tmask)),s=1,c='r',edgecolor='r',label='c (radians)')
+        axarr[n,m].grid()
+        axarr[n,m].legend(prop={'size':6})
+        axarr[n,m].set_title('n='+str(ns[n]-1)+', m='+str(ms[m]))
+        if (index)%len(ms)==1:
+            axarr[n,m].set_ylabel('Param Value')
+            axarr[n,m].set_ylim(-20,20)
+        if (index)>(len(ns)-1)*len(ms):
+            axarr[n,m].set_xlabel('Sidereal Time (hrs)')
+        index+=1
+f.subplots_adjust(wspace=0)
+pylab.savefig(outdir+'cos_param_data.png',dpi=300)
+pylab.clf()
 
