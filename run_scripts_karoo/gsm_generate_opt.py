@@ -2,13 +2,10 @@
 Module to create gsm data for a given location and time. 
 Set up to run in parallel using gsm_header.py and a batch script. 
 Example batch script in /home/tabithav/scripts/mk_gsm.m on hippo.
-
-
 """
 import matplotlib
 matplotlib.use('Agg')
-from numpy import *
-import numpy
+import numpy as np
 import pylab
 import scipy.interpolate as itp
 import numpy.ma as ma
@@ -29,36 +26,36 @@ def main(gsm_times,antenna,fplot,site_params):
 #Main directories and files for the input and output
     supdir = '../../supplemental_data/'
     if antenna==70:
-        outdir = supdir+'gsm_data_70_Karoo_test/'
+        outdir = supdir+'gsm_data_70_Karoo_test_update/'
     elif antenna==100:
-        outdir = supdir+'gsm_data_100_Karoo_test/'
+        outdir = supdir+'gsm_data_100_Karoo_test_update/'
 
 #Parameters for the site.
     idate = site_params[0]
     lon = site_params[1]
     lat = site_params[2]
     elevation = site_params[3]
-    gsm_freq = arange(50,111,1)
+    gsm_freq = np.arange(50,111,1)
 
 #Set up ra/dec arrays for GSM data
-    gsm_var = numpy.load(supdir+'angles.npy')
+    gsm_var = np.load(supdir+'angles.npy')
 
 #Set up az/alt arrays for antenna simulation data
-    curr_az = numpy.load(supdir+'sim_az.npy')
-    curr_alt = numpy.load(supdir+'sim_alt.npy')
+    curr_az = np.load(supdir+'sim_az.npy')
+    curr_alt = np.load(supdir+'sim_alt.npy')
 
 #Load map data array
-    gsm_data = numpy.load(supdir+'gsm_array.npy')
+    gsm_data = np.load(supdir+'gsm_array.npy')
 
 #Load beam simulation data array
     if antenna==70:
-        sim_data = numpy.load(supdir+'beam_simulations50-90.npy')
+        sim_data = np.load(supdir+'beam_simulations_ant70_50-110.npy')
     elif antenna==100:
-        sim_data = numpy.load(supdir+'beam_simulations80-110.npy')
+        sim_data = np.load(supdir+'beam_simulations_ant100_50-110.npy')
    
     print 'Initial loading time is: ',time.time()-start,' seconds'
 
-    results = zeros(len(gsm_freq))
+    results = np.zeros(len(gsm_freq))
     find = 0
 
     tstart = time.time()
@@ -89,9 +86,9 @@ def main(gsm_times,antenna,fplot,site_params):
 
 #Make a .npy array for the data
     if antenna==70:
-        numpy.save(outdir+'gsm_data_Karoo_'+time_label+'_sid_time.npy',results)
+        np.save(outdir+'gsm_data_Karoo_'+time_label+'_sid_time.npy',results)
     elif antenna==100: 
-        numpy.save(outdir+'gsm_data_Karoo_'+time_label+'_sid_time.npy',results)
+        np.save(outdir+'gsm_data_Karoo_'+time_label+'_sid_time.npy',results)
     find=0
 #    print 'Running a single time sample takes: ',time.time()-tstart,' seconds'
 

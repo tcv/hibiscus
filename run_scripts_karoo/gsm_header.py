@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 sys.path.append(os.path.abspath('../../hibiscus'))
 import file_funcs as ff
 import gsm_funcs as gf
-import gsm_data_generate as gsm
 import gsm_generate_opt as gsm_opt
 import time 
 
@@ -36,6 +35,6 @@ site_params = ['2015/4/1','21.4109','-30.7216',1080]
 
 #Actual run
 start = time.time()
-gsm_opt.main(myarg,antenna,fplot)
+gsm_opt.main(myarg,antenna,fplot,site_params)
 finish=time.time()
 print 'Code took ',finish-start,' seconds to run.'

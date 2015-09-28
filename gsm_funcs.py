@@ -300,11 +300,11 @@ def sim_beam_interp(gsm_var,gaindb,sim_var):
 #    func_gain = itp.CloughTocher2DInterpolator(sim_var*180./pi,gaindb)
 
 #Simplest linear interpolator. 
-    func_gain = itp.LinearNDInterpolator(sim_var*180./pi,gaindb)
+    func_gain = itp.LinearNDInterpolator(sim_var*180./np.pi,gaindb)
 
 
     gsm_gain = func_gain(gsm_var)
-    gain_beam = np.pow(10.,0.05*gsm_gain)
+    gain_beam = np.power(10.,0.05*gsm_gain)
     nandata = np.where(np.isnan(gain_beam))
     for i in range(0,len(nandata[0])):
         gain_beam[nandata[0][i]]=0.0
@@ -349,7 +349,7 @@ def ant_beam(gsm_array, gsm_var,gaindb,sim_var,label,freq,plotf):
     if freq==plotf:
         plt.rc('font',size=8)
         plt.subplot(411)
-        plt.scatter(sim_var[:,0]*180./np.pi,sim_var[:,1]*180./np.pi,s=1,linewidth=0,c=np.pow(10.,0.05*gaindb),vmin=0,vmax=3,cmap=cm.jet)
+        plt.scatter(sim_var[:,0]*180./np.pi,sim_var[:,1]*180./np.pi,s=1,linewidth=0,c=np.power(10.,0.05*gaindb),vmin=0,vmax=3,cmap=cm.jet)
         plt.colorbar() 
         plt.xlim(0,360)
         plt.ylim(-90,90)
@@ -408,6 +408,7 @@ def gain_linear(t_index,p_index,f_index,gaindb):
     MAXP = 181.
 
     P = gaindb[t_index+MAXT*(p_index+MAXP*f_index)]
+
     p = np.power(10.,0.05*P)
 
     return p

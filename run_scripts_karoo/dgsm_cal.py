@@ -9,8 +9,7 @@ Note that it also has inputs for the supplemental data needed to run the code.
 """
 import matplotlib
 matplotlib.use('Agg')
-from numpy import *
-import numpy
+import numpy as np
 import pylab
 import scipy.interpolate as itp
 import numpy.ma as ma
@@ -56,7 +55,7 @@ ant_s11_file_old = supdir+'ANT70MHZ_CMU.s1p'
 R_ant,X_ant,F_ant = ef.imped_skrf(ant_s11_file,0.0)
 R_amp,X_amp,F_amp = ef.imped_skrf(amp_s_file,0.0)
 R_ant_old,X_ant_old,F_ant_old = ef.imped_skrf(ant_s11_file_old,0.0)
-Z_ant = sqrt(R_ant**2+X_ant**2)
+Z_ant = np.sqrt(R_ant**2+X_ant**2)
 Z_ant_sm = itp.UnivariateSpline(F_ant,Z_ant,s=0.01)
 Effic = ef.effic(R_ant,X_ant,F_ant,R_amp,X_amp,F_amp)
 Eff_sm = itp.UnivariateSpline(F_ant,Effic,s=0.01)
@@ -68,29 +67,26 @@ fitshort = [9.43299312e-9,-1.16197388e-10,4.31005321e-13]
 
 print sys.argv[1]
 ant = sys.argv[1].split('_')[-1]
-gsm_freqs = arange(50,111,1)
+gsm_freqs = np.arange(50,111,1)
 #Load file for gsm data with 70 MHz antenna.
 if ant=='100/':
-    gsm_data = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_data_full_100_Karoo.npy')
-    gsm_times = numpy.load(supdir+'gsm_data_100_Karoo_test/gsm_sid_time_full_100_Karoo.npy')
-    f70_gsm = where(gsm_freqs<=85.)[0][-1]
+    gsm_data = np.load(supdir+'gsm_data_100_Karoo_test_update/gsm_data_full_100_Karoo.npy')
+    gsm_times = np.load(supdir+'gsm_data_100_Karoo_test_update/gsm_sid_time_full_100_Karoo.npy')
+    f70_gsm = np.where(gsm_freqs<=85.)[0][-1]
 elif ant=='70/':
-    gsm_data = numpy.load(supdir+'gsm_data_70_Karoo_test/gsm_data_full_70_Karoo.npy')
-    gsm_times = numpy.load(supdir+'gsm_data_70_Karoo_test/gsm_sid_time_full_70_Karoo.npy')
-    f70_gsm = where(gsm_freqs<=70.)[0][-1]
+    gsm_data = np.load(supdir+'gsm_data_70_Karoo_test_update/gsm_data_full_70_Karoo.npy')
+    gsm_times = np.load(supdir+'gsm_data_70_Karoo_test_update/gsm_sid_time_full_70_Karoo.npy')
+    f70_gsm = np.where(gsm_freqs<=70.)[0][-1]
 
-max_gsm = where(gsm_data[:,f70_gsm]==max(gsm_data[:,f70_gsm]))[0]
-print max_gsm
-print len(gsm_times)
-
+max_gsm = np.where(gsm_data[:,f70_gsm]==max(gsm_data[:,f70_gsm]))[0]
 directories = os.listdir(indir)
 
 #Load files for full day of data. 
 #Set to max length, then truncate. Max length is 1 dataset every 3 seconds for 24 hours. 
 #Freq length set by previous experience, and is 11796 (truncated, but not rebinned).
-data = zeros((28800,11796))
-mask = zeros((28800,11796))
-times = zeros(28800)
+data = np.zeros((28800,11796))
+mask = np.zeros((28800,11796))
+times = np.zeros(28800)
 day_idate = int(sys.argv[3])*24+int(sys.argv[4])
 dint = 0
 mint = 0
@@ -106,28 +102,28 @@ for hour in range(0,24):
          cur_date = curr_day*24+cur_hour
          if (cur_date == day_idate+hour):
              if direct.split('_')[-1]=='antenna.npy':
-                 single = numpy.load(indir+direct) 
+                 single = np.load(indir+direct) 
                  if len(single)<2000:
-                     freqs = arange(40.,130.,90./len(single[0]))
+                     freqs = np.arange(40.,130.,90./len(single[0]))
                      for time in range(0,len(single)):
                          data[dint] = single[time]
                          dint +=1
                  print 'Hour being processed is April ',curr_day,':',cur_hour
 
              elif direct.split('_')[-2] =='ant':
-                 single = numpy.load(indir+direct)
+                 single = np.load(indir+direct)
                  for time in range(0,len(single)):
                      times[tint] = single[time]
                      tint+=1
 
              elif direct.split('_')[-1]=='mask.npy':
-                 single = numpy.load(indir+direct)
+                 single = np.load(indir+direct)
                  for time in range(0,len(single)):
                      mask[mint] = single[time]
                      mint+=1
 
 
-print 'Percent of Data Flagged from Frequency Masking: ',100.*sum(mask)/(len(mask)*len(mask[0]))
+print 'Percent of Data Flagged from Frequency Masking: ',100.*np.sum(mask)/(len(mask)*len(mask[0]))
 data = data[0:dint]
 mask = mask[0:mint]
 times = times[0:tint]
@@ -137,16 +133,16 @@ short_data = poly.polyval(freqs,fitshort)
 st,sf,short_data,sm,sf,sv,ste = ff.loadsingle(supdir+'2015-04-05-00-06-26_Ch_2_noisetrunc.dat')
 
 #Convert data times to sidereal times and sort.
-sid_times = zeros(len(times))
+sid_times = np.zeros(len(times))
 for i in range(0,len(times)):
     single_sid = ff.sidereal(times[i],karoo_idate,karoo_lon,karoo_lat)
     sid_times[i] = single_sid
 
 
-sortind = argsort(sid_times)
-sorttime = zeros(len(sid_times))
-sortdata = zeros((len(sid_times),len(data[0])))
-sortmask = zeros((len(sid_times),len(data[0])))
+sortind = np.argsort(sid_times)
+sorttime = np.zeros(len(sid_times))
+sortdata = np.zeros((len(sid_times),len(data[0])))
+sortmask = np.zeros((len(sid_times),len(data[0])))
 for i in range(0,len(sid_times)):
     sorttime[i] = sid_times[sortind[i]]
     sortdata[i] = data[sortind[i]]
@@ -164,7 +160,7 @@ for i in range(0,len(freqs)):
 #    new_mask = ff.threshold_flag(sortdata[i],sortmask[i],freqs,75.)
 #    sortmask[i] = new_mask
 
-percent_masked = 100.*sum(sortmask)/(len(sortmask)*len(sortmask[0]))
+percent_masked = 100.*np.sum(sortmask)/(len(sortmask)*len(sortmask[0]))
 print 'Percentage of Masked Data from Frequency and Time Masking: ',percent_masked
 
 #Compress data to same time intervals as gsm data.
@@ -175,31 +171,29 @@ stack_data,stack_mask = cf.match_binning(gsm_times,freqs,sorttime,sortdata,sortm
 #Re-sort based upon the adjustment. 
 
 if ant=='100/':
-    f70_gsm = where(gsm_freqs<=85.)[0][-1]
-    f70_data = where(freqs<=85.)[0][-1]
+    f70_gsm = np.where(gsm_freqs<=85.)[0][-1]
+    f70_data = np.where(freqs<=85.)[0][-1]
 elif ant=='70/':
-    f70_gsm = where(gsm_freqs<=70.)[0][-1]
-    f70_data = where(freqs<=70.)[0][-1]
+    f70_gsm = np.where(gsm_freqs<=70.)[0][-1]
+    f70_data = np.where(freqs<=70.)[0][-1]
 
 
-data_70 = zeros(len(times))
+data_70 = np.zeros(len(times))
 for i in range(0,len(times)):
     data_70[i] = data[i][f70_data]
 
-print stack_data[:,f70_data]
-max_stack = where(stack_data[:,f70_data]==max(stack_data[:,f70_data]))[0]
-print max_stack
-#max_gsm = where(gsm_data[:,f70_gsm]==max(gsm_data[:,f70_gsm]))[0]
+max_stack = np.where(stack_data[:,f70_data]==max(stack_data[:,f70_data]))[0]
+
 time_diff = gsm_times[max_gsm]-gsm_times[max_stack]
+print 'The time adjustment needed was: ',time_diff
 ind_diff = max_gsm-max_stack
-adj_times = zeros(len(gsm_times))
+adj_times = np.zeros(len(gsm_times))
 for i in range(0,len(gsm_times)):
-#    print gsm_times[i]
     adj_times[i] = (gsm_times[i]+time_diff)%24.
 
-sortstack_ind = argsort(adj_times)
-sortstack = zeros((len(adj_times),len(stack_data[0])))
-sortstackmask=zeros((len(adj_times),len(stack_data[0])))
+sortstack_ind = np.argsort(adj_times)
+sortstack = np.zeros((len(adj_times),len(stack_data[0])))
+sortstackmask= np.zeros((len(adj_times),len(stack_data[0])))
 for i in range(0,len(sortstack_ind)):
     sortstack[i] = stack_data[sortstack_ind[i]]
     sortstackmask[i] = stack_mask[sortstack_ind[i]]
@@ -210,22 +204,22 @@ lim_stack,lim_mask,lim_gsm,lim_time = cf.lim_bin(freqs,sortstack,sortstackmask,g
 
 #Calculate the time mean for the day.
 mean_data,mean_mask = cf.time_mean(lim_stack,lim_mask)
-gsm_mask = zeros((len(lim_gsm),len(lim_gsm[0])))
+gsm_mask = np.zeros((len(lim_gsm),len(lim_gsm[0])))
 mean_gsm, mean_gmask = cf.time_mean(lim_gsm,gsm_mask)
 
 #Generate mean subtracted arrays for calibration 
-lim_ms_stack= zeros((len(lim_stack),len(stack_data[0])))
+lim_ms_stack= np.zeros((len(lim_stack),len(stack_data[0])))
 for i in range(0,len(lim_stack)):
     lim_ms_stack[i] = lim_stack[i]-mean_data
-lim_ms_gsm = zeros((len(lim_stack),len(freqs)))
+lim_ms_gsm = np.zeros((len(lim_stack),len(freqs)))
 for i in range(0,len(lim_stack)):
     lim_ms_gsm[i] = lim_gsm[i]-mean_gsm
 
-lim_ms_stack = array(lim_ms_stack)
-lim_ms_gsm = array(lim_ms_gsm)
+lim_ms_stack = ma.array(lim_ms_stack)
+lim_ms_gsm = ma.array(lim_ms_gsm)
 
 #Use least squares to calculate the calibration factor at each frequency
-Kdgsm = zeros(len(freqs))
+Kdgsm = np.zeros(len(freqs))
 K0 = [6.e10,]
 for i in range(0,len(freqs)):
     if len(lim_mask[:,i])==sum(lim_mask[:,i]):
@@ -237,7 +231,7 @@ for i in range(0,len(freqs)):
         Kdgsm[i] = Ki
 
 #Plot the comparison of gsm to calibrated data at 70 MHz over time. 
-pylab.plot(gsm_times,gsm_data[:,f70_gsm]-mean_gsm[f70_data]*ones(len(gsm_data)),label='gsm',c='k')
+pylab.plot(gsm_times,gsm_data[:,f70_gsm]-mean_gsm[f70_data]*np.ones(len(gsm_data)),label='gsm',c='k')
 pylab.ylim(-3e3,3e3)
 pylab.xlim(0,24)
 pylab.xlabel('Sidereal Time (Hours)')
@@ -265,11 +259,17 @@ pylab.clf()
 
 if ant=='70/':
    fit_min = 50.
-   fit_max = 90.
-elif ant=='100/':
-   fit_min = 80.
    fit_max = 110.
-Kfit,Kparams = cf.poly_fore(mean_data*Kdgsm,mean_mask,freqs,fit_min,fit_max,2,ones(len(mean_data)))
+elif ant=='100/':
+   fit_min = 50.
+   fit_max = 110.
+
+print np.shape(np.where(np.isnan(mean_data)))
+mean_data[np.where(mean_data<=0)]=1e-15
+Kdgsm[np.where(Kdgsm<=0.)]=1e-15
+mean_mask[np.where(mean_data<=0.)]=1.
+mean_mask[np.where(Kdgsm<=0.)]=1.
+Kfit,Kparams = cf.poly_fore(mean_data*Kdgsm,mean_mask,freqs,fit_min,fit_max,2,np.ones(len(mean_data)))
 print Kparams
 print ma.min(mean_data*Kdgsm-Kfit)
 print ma.max(mean_data*Kdgsm-Kfit)
@@ -284,8 +284,8 @@ pylab.xlabel('Frequency (MHz)')
 pylab.savefig(outdir+'gsm_cal_test_'+sys.argv[3]+'_mean_fit.png',dpi=300)
 pylab.clf()
 
-cal_data = zeros((len(sortstack),len(sortstack[0])))
-cal_data_masked = zeros((len(sortstack),len(sortstack[0])))
+cal_data = np.zeros((len(sortstack),len(sortstack[0])))
+cal_data_masked = np.zeros((len(sortstack),len(sortstack[0])))
 for t in range(0,len(cal_data)):
     cal_data[t] = sortstack[t]*Kdgsm
     cal_data_masked[t] = cal_data[t]
@@ -313,12 +313,12 @@ pylab.clf()
 #numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
 #numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
 if ant=='100/':
-    numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_100MHz_ant.npy',cal_data_masked)
-    numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_100MHz_ant.npy',gsm_times)
-    numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_100MHz_ant.npy',Kdgsm)
+    np.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_100MHz_ant.npy',cal_data_masked)
+    np.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_100MHz_ant.npy',gsm_times)
+    np.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_100MHz_ant.npy',Kdgsm)
 elif ant=='70/':
-    numpy.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
-    numpy.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
-    numpy.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
+    np.save(outdir+'gsm_cal_data_Apr_'+sys.argv[3]+'_70MHz_ant.npy',cal_data_masked)
+    np.save(outdir+'gsm_cal_times_Apr_'+sys.argv[3]+'_70MHz_ant.npy',gsm_times)
+    np.save(outdir+'gsm_cal_values_Apr_'+sys.argv[3]+'_70MHz_ant.npy',Kdgsm)
 
 

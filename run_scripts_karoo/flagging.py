@@ -74,9 +74,9 @@ times = times[0:tint]
 new_mask=zeros((len(data),len(data[0])))
 for f in range(0,len(freqs)):
     new_mask[:,f] = ff.timeflag(data[:,f],mask[:,f],times,3.,tscale)
-for t in range(0,len(times)):
-    thres_mask = ff.threshold_flag(data[t],new_mask[t],freqs,50.)
-    mask[t] = thres_mask
+#for t in range(0,len(times)):
+#    thres_mask = ff.threshold_flag(data[t],new_mask[t],freqs,50.)
+#    mask[t] = thres_mask
 
 numpy.save(outdir+'/'+date+'_mask.npy',mask)
 print shape(mask)

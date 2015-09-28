@@ -47,11 +47,11 @@ def imped_skrf(file_name,time_delay):
     mag_data = np.zeros(len(data.s))
     phase_data = np.zeros(len(data.s))
     for i in range(0,len(data.s)):
-        real_data[i] = real(data.s[i][0][0])
-        imag_data[i] = imag(data.s[i][0][0])
+        real_data[i] = np.real(data.s[i][0][0])
+        imag_data[i] = np.imag(data.s[i][0][0])
         freq_data[i] = data.f[i]
-        mag_data[i] = absolute(data.s[i][0][0])
-        phase_data[i] = angle(data.s[i][0][0])
+        mag_data[i] = abs(data.s[i][0][0])
+        phase_data[i] = np.angle(data.s[i][0][0])
 
     delta_phi = time_delay*2*np.pi*freq_data
     real_mod = mag_data*np.cos(phase_data+delta_phi)
